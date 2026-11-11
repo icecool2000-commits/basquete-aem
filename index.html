@@ -1,0 +1,990 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Basquete AEM</title>
+<meta name="description" content="Lista de presença, ranking e histórico dos treinos do Basquete AEM (Associação Esportiva Mocoquense).">
+<meta name="theme-color" content="#0b0b0d">
+<link rel="stylesheet" href="torneio.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Basquete AEM">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Figtree:wght@400;500;600&display=swap">
+<style>
+:root{
+  /* Basquete AEM: vermelho e preto do escudo da AEM (camisa listrada), branco, azul do tubarão mascote, laranja da bola */
+  --bg:#0b0b0d; --surface:#1a1a1d; --fg:#f6f4f4; --muted:#aba6a7;
+  --line:#33302f; --accent:#d7262c; --accent-fg:#ffffff; --lane:#3b8fe0; --danger:#ff7a59; --soft:#141416; --ok:#5fcf6a;
+  --bola:#f2a41c;
+  --display:"Alfa Slab One",Rockwell,"Arial Black",serif;
+  --script:"Alfa Slab One",Rockwell,serif;
+  --body:"Figtree",ui-sans-serif,system-ui,-apple-system,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+.wrap{max-width:600px;margin:0 auto;padding-block:18px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-direction:column;gap:6px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.admin-pill{font-size:12px;font-weight:600;color:var(--ok);border:1px solid var(--ok);border-radius:999px;padding:2px 8px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,8.5vw,38px);line-height:1;margin:0;text-transform:uppercase;letter-spacing:.01em;text-align:center}
+h1 span{display:block;font-family:var(--body);font-weight:600;text-transform:uppercase;font-size:.36em;color:var(--lane);letter-spacing:.14em;margin-top:6px}
+/* topo: faixa listrada da camisa da AEM, escudo e o tubarão quicando a bola */
+.top{position:relative;justify-content:center!important;align-items:flex-end;gap:0;padding:14px 8px 6px;border-radius:20px;overflow:hidden;
+  background:linear-gradient(180deg,rgb(11 11 13 / .2),var(--bg) 92%),repeating-linear-gradient(100deg,#d7262c 0 26px,#111 26px 40px,#f3f3f3 40px 44px,#111 44px 58px)}
+.logo{width:min(150px,40%);height:auto;display:block;border-radius:50%;box-shadow:0 0 0 4px #fff,0 10px 26px rgb(0 0 0 / .55);z-index:1;animation:escudo 1s ease-out both}
+.mascote{width:min(230px,58%);height:auto;display:block;margin-left:-12px;transform-origin:50% 100%;animation:quica 1.6s ease-in-out infinite;filter:drop-shadow(0 8px 12px rgb(0 0 0 / .5))}
+@keyframes quica{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-8px) rotate(2deg)}}
+@keyframes escudo{from{transform:scale(.6) rotate(-25deg);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.mascote,.logo{animation:none}}
+.admin-pill{position:absolute;right:0;top:0}
+h2{font-family:var(--display);font-weight:400;font-size:22px;margin:0;text-transform:uppercase;letter-spacing:.02em}
+.lane{height:6px;border-radius:3px;background:repeating-linear-gradient(90deg,var(--lane) 0 18px,var(--accent) 18px 36px)}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:var(--soft);padding:4px;border-radius:12px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.tabs button{background:transparent;color:var(--fg);padding:9px 2px;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.tabs button.vivo{color:#ff4d55;font-weight:700}
+.tabs button.vivo[aria-selected="true"]{color:#fff}
+.tabs button[aria-selected="true"]{background:var(--accent);color:#fff;box-shadow:0 1px 2px rgb(0 0 0 / .12)}
+section{display:flex;flex-direction:column;gap:14px}
+select,input{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%;min-width:0;font-size:16px}
+input:focus-visible,button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button,.btn{font:inherit;font-weight:600;border:0;border-radius:10px;padding:11px 14px;cursor:pointer;background:var(--accent);color:var(--accent-fg);white-space:nowrap;text-decoration:none;text-align:center;display:inline-block}
+button.ghost,.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+button.danger{background:transparent;color:var(--danger);border:1px solid var(--line)}
+.btn.wa{background:#1fa855;color:#fff}
+button:disabled{opacity:.5;cursor:default}
+.info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.info > div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
+.info span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.info b{display:block;font-weight:600;overflow-wrap:anywhere}
+.info input{padding:2px 0;border:0;border-bottom:1px dashed var(--line);border-radius:0;background:transparent;font-weight:600}
+.confirm-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.confirm-box form{display:flex;gap:8px}
+.am-bar{display:flex;gap:8px;flex-wrap:wrap}.am-bar button{flex:1 1 160px}
+.am-form label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);flex:1 1 140px;min-width:0}
+.am-linha{display:flex;gap:8px;flex-wrap:wrap}.am-linha > *{flex:1 1 140px}
+.am-vs{margin:0;padding:10px 12px;border-radius:12px;background:var(--surface);border:2px solid #ec6a2c;font-weight:700;text-align:center}
+.me{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.me b{font-size:18px}
+.linkish{background:none;border:0;color:var(--accent);padding:0;font-weight:500;text-decoration:underline;cursor:pointer}
+.done{border-color:var(--ok)}
+.done p{margin:0}
+.share{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.count{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.count span{color:var(--muted);font-variant-numeric:tabular-nums}
+ol.list{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+ol.list li{display:grid;grid-template-columns:2.4em minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line)}
+ol.list li:first-child{border-top:0}
+ol.list li.mine{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.n{font-family:var(--display);font-weight:400;font-size:20px;color:var(--lane);font-variant-numeric:tabular-nums;text-align:right}
+.nome{font-weight:500;overflow-wrap:anywhere}
+.sub{display:block;font-size:12px;color:var(--muted)}
+li button{padding:5px 10px;font-size:13px}
+.empty{padding:22px 16px;color:var(--muted);text-align:center;display:block!important}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.actions > *{flex:1 1 160px}
+.note{font-size:14px;color:var(--muted);margin:0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;max-width:calc(100% - 32px);text-align:center;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{background:var(--surface);color:var(--fg);border:1px solid var(--line);padding:7px 12px;font-size:14px}
+.chips button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+#rk-table{width:100%;border-collapse:collapse;table-layout:fixed;font-variant-numeric:tabular-nums}
+#rk-table th,#rk-table td{padding:10px 4px;border-top:1px solid var(--line);vertical-align:middle;text-align:center}
+#rk-table thead th{border-top:0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;white-space:nowrap}
+#rk-table .c-pos{width:44px}
+#rk-table .c-num{width:38px}
+#rk-table .c-tot{width:50px}
+#rk-table .c-pct{width:50px}
+#rk-table th.nome-col,#rk-table td.nome-col{text-align:left;padding-left:8px;min-width:0}
+#rk-table td.nome-col .nome{display:block;overflow-wrap:break-word;line-height:1.25}
+#rk-table td.pos span{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;font-family:var(--display);font-size:14px;color:var(--lane)}
+#rk-table tr.podio td.pos span{background:var(--lane);color:#fff}
+#rk-table td.tot{font-weight:700;font-size:17px}
+#rk-table td.pct{color:var(--muted);font-size:14px}
+#rk-table td.dia{color:var(--muted)}
+#rk-table td.empty-cell{text-align:center;color:var(--muted);padding:22px 12px}
+.bar{height:4px;border-radius:2px;background:var(--soft);margin-top:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--lane))}
+.stat{font-size:14px;color:var(--muted);margin:0}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.tile span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.tile b{display:block;font-family:var(--display);font-weight:400;font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile small{display:block;font-size:12px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 12px 10px;min-width:0}
+.card h3{margin:0;font-size:15px;font-weight:600}
+.cap{margin:2px 0 8px;font-size:13px;color:var(--muted)}
+.chart{overflow-x:auto}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .ax{fill:var(--muted);font-size:10px;font-family:var(--body)}
+.chart .val{fill:var(--fg);font-size:10.5px;font-weight:600;font-family:var(--body)}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .bar{fill:var(--accent)}
+.chart .bar.hi{fill:var(--hi,var(--lane))}
+.chart .bar:hover{opacity:.8}
+.hbars{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.hb{display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:center;gap:8px}
+.hb .pos{font-family:var(--display);font-size:16px;color:var(--muted);text-align:center;align-self:center;line-height:1}
+.hb.p1 .pos{color:var(--hi,var(--lane))}
+.hb .nm{font-size:14px;font-weight:500;overflow-wrap:anywhere;line-height:1.2}
+.hb .trk{grid-column:2/3;height:12px;border-radius:0 4px 4px 0;background:var(--soft);overflow:hidden}
+.hb .trk i{display:block;height:100%;border-radius:0 4px 4px 0;background:var(--accent)}
+.hb.p1 .trk i{background:var(--hi,var(--lane))}
+.hb .q{grid-row:1/3;grid-column:3;text-align:right;font-variant-numeric:tabular-nums;min-width:52px}
+.hb .q b{display:block;font-size:17px}
+.hb .q small{color:var(--muted);font-size:12px}
+.duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
+ol.rank{list-style:none;margin:6px 0 0;padding:0}
+ol.rank li{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
+ol.rank li:first-child{border-top:0}
+ol.rank li b{font-variant-numeric:tabular-nums}
+ol.rank li span{color:var(--muted)}
+.install{background:var(--soft);border-radius:12px;padding:12px 14px;font-size:14px;display:flex;flex-direction:column;gap:6px}
+.install p{margin:0}
+footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted);padding-top:8px}
+@media (prefers-reduced-motion:no-preference){ol.list li{animation:in .25s ease-out}}
+@keyframes in{from{background:color-mix(in srgb,var(--accent) 30%,transparent)}to{background:transparent}}
+.ed-acoes{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.ed-papel-l{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="top"><img class="logo" src="logo.png" alt="Associação Esportiva Mocoquense" width="512" height="512"><img class="mascote" src="mascote.png" alt="Tubarão, mascote do Basquete AEM, quicando a bola" width="700" height="553"><span class="admin-pill" id="admin-pill" hidden>Organizador</span></div>
+    <h1>Presença <span>domingo · 10:00 · AEM</span></h1>
+  </header>
+
+  <div class="modos" role="group" aria-label="Modo de uso">
+    <button type="button" id="modo-btn-treino" aria-pressed="true">Treino / Rachão</button>
+    <button type="button" id="modo-btn-torneio" aria-pressed="false">🏆 Torneio</button>
+  </div>
+
+  <div id="modo-treino" class="t-col">
+
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" id="tab-treino" aria-selected="true">Treino</button>
+    <button type="button" role="tab" id="tab-ranking" aria-selected="false">Ranking</button>
+    <button type="button" role="tab" id="tab-hist" aria-selected="false">Histórico</button>
+    <button type="button" role="tab" id="tab-met" aria-selected="false">Métricas</button>
+    <button type="button" role="tab" id="tab-aovivo" aria-selected="false">Ao vivo</button>
+  </div>
+
+  <!-- TREINO -->
+  <section id="p-treino">
+    <select id="sel-data" aria-label="Escolha o treino ou o amistoso"></select>
+    <div class="am-bar" id="am-bar" hidden>
+      <button type="button" class="ghost" id="btn-novo-am">+ Lista de jogo amistoso</button>
+      <button type="button" class="ghost" id="btn-edit-am" hidden>Editar amistoso</button>
+    </div>
+    <form class="confirm-box am-form" id="am-form" hidden>
+      <b id="am-form-tit">Novo jogo amistoso</b>
+      <label>Contra quem<input id="am-adv" maxlength="60" placeholder="Ex.: Basquete São José do Rio Pardo" required></label>
+      <div class="am-linha">
+        <label>Data<input id="am-data" type="date" required></label>
+        <label>Horário<input id="am-hora" type="time" required></label>
+      </div>
+      <label>Local<input id="am-local" maxlength="80" placeholder="Ex.: Ginásio Municipal" required></label>
+      <div class="am-linha">
+        <button type="submit" id="am-salvar">Criar lista</button>
+        <button type="button" class="ghost" id="am-cancelar">Cancelar</button>
+      </div>
+      <button type="button" class="danger" id="am-apagar" hidden>Apagar este amistoso</button>
+    </form>
+    <p class="am-vs" id="am-vs" hidden></p>
+    <div class="info">
+      <div><span>Dia</span><b id="i-dia">—</b></div>
+      <div><span>Horário</span><b id="i-hora">—</b></div>
+      <div><span>Local</span><b id="i-local-ro">—</b><input id="i-local" aria-label="Local do treino" hidden></div>
+    </div>
+
+    <div class="confirm-box" id="box-confirm" hidden>
+      <div class="me" id="me-known" hidden>
+        <div><span class="sub">Você é</span><b id="me-name"></b></div>
+        <button type="button" class="linkish" id="me-change">Não sou eu</button>
+      </div>
+      <form id="form-confirm">
+        <input id="nome" maxlength="40" placeholder="Seu nome" aria-label="Seu nome" autocomplete="name" list="nomes-conhecidos">
+        <button type="submit" id="btn-confirm">Confirmar presença</button>
+      </form>
+      <datalist id="nomes-conhecidos"></datalist>
+    </div>
+
+    <div class="confirm-box done" id="box-done" hidden>
+      <p><b id="done-msg">Presença confirmada!</b></p>
+      <div class="share">
+        <a class="btn wa" id="wa-link" href="#" target="_blank" rel="noopener">Mandar no grupo</a>
+        <button type="button" class="ghost" id="btn-sair">Desistir</button>
+      </div>
+    </div>
+
+    <form class="confirm-box" id="admin-add" hidden>
+      <span class="sub">Organizador: adicionar outra pessoa</span>
+      <div style="display:flex;gap:8px">
+        <input id="admin-nome" maxlength="40" placeholder="Nome do atleta" aria-label="Nome do atleta" list="nomes-conhecidos" autocomplete="off">
+        <button type="submit">Adicionar</button>
+      </div>
+    </form>
+
+    <p class="note" id="past-note" hidden></p>
+
+    <div class="count"><h2>Confirmados</h2><span id="total">0 nomes</span></div>
+    <ol class="list" id="list"><li class="empty">Carregando a lista…</li></ol>
+    <div class="actions">
+      <button type="button" class="ghost" id="copy">Copiar lista</button>
+      <a class="btn wa" id="wa-link2" href="#" target="_blank" rel="noopener">Mandar lista no grupo</a>
+    </div>
+
+    <div class="install" id="install" hidden>
+      <p><b>Instale o app no celular</b></p>
+      <p id="install-text"></p>
+      <button type="button" id="btn-install" hidden>Instalar</button>
+    </div>
+  </section>
+
+  <!-- RANKING -->
+  <section id="p-ranking" hidden>
+    <div class="chips" id="chips-dia" hidden>
+      <button type="button" data-dia="geral" aria-pressed="true">Geral</button>
+      <button type="button" data-dia="2" aria-pressed="false">Terça</button>
+      <button type="button" data-dia="4" aria-pressed="false">Quinta</button>
+      <button type="button" data-dia="0" aria-pressed="false">Domingo</button>
+    </div>
+    <select id="sel-periodo" aria-label="Período do ranking"></select>
+    <p class="stat" id="rk-stat"></p>
+    <div class="tablebox"><table id="rk-table"></table></div>
+    <div class="actions">
+      <button type="button" class="ghost" id="copy-rk">Copiar ranking</button>
+      <a class="btn wa" id="wa-rk" href="#" target="_blank" rel="noopener">Mandar ranking no grupo</a>
+    </div>
+  </section>
+
+  <!-- MÉTRICAS -->
+  <section id="p-met" hidden>
+    <select id="met-periodo" aria-label="Período das métricas"></select>
+    <div class="tiles" id="met-tiles"></div>
+    <div class="card"><h3>Top 5 – quem mais participou</h3><p class="cap" id="cap-top5"></p><div class="hbars" id="ch-top5"></div></div>
+    <div class="card"><h3>Participação por treino</h3><p class="cap" id="cap-treinos"></p><div class="chart" id="ch-treinos"></div></div>
+    <div class="card" id="card-dias"><h3>Média de atletas por dia</h3><p class="cap">Qual dia da semana tem mais adesão</p><div class="chart" id="ch-dias"></div></div>
+    <div class="card"><h3>Horário das confirmações</h3><p class="cap" id="cap-horas"></p><div class="chart" id="ch-horas"></div></div>
+    <div class="card"><h3>Antecedência das confirmações</h3><p class="cap">Quanto tempo antes do treino o pessoal confirma</p><div class="chart" id="ch-antec"></div></div>
+    <div class="duo">
+      <div class="card"><h3>Treinos mais cheios</h3><ol class="rank" id="top-mais"></ol></div>
+      <div class="card"><h3>Treinos mais vazios</h3><ol class="rank" id="top-menos"></ol></div>
+    </div>
+  </section>
+
+  <!-- HISTÓRICO -->
+  <section id="p-aovivo" hidden></section>
+  <section id="p-hist" hidden>
+    <p class="stat" id="h-stat"></p>
+    <ol class="list" id="h-list"></ol>
+  </section>
+
+  </div>
+
+  <div id="modo-torneio" class="t-col" hidden>
+    <div id="torneio-root" class="t-col"></div>
+    <div class="t-card" id="ed-painel" hidden>
+      <h3>Editores do torneio</h3>
+      <p class="cap">Crie um usuário e senha para cada pessoa que vai montar o torneio e marcar placar (editor / mesário). O organizador também pode criar gestores, que criam os acessos dos mesários. Passe os dados para ela pelo WhatsApp. Remover tira o acesso na hora.</p>
+      <div class="ed-lista" id="ed-lista"></div>
+      <form id="ed-form" class="t-form">
+        <div class="t-linha">
+          <input id="ed-nome" placeholder="Nome (ex.: Clayton)" maxlength="30" aria-label="Nome do editor">
+          <input id="ed-usuario" placeholder="Usuário (ex.: clayton)" maxlength="30" autocomplete="off" autocapitalize="none" aria-label="Usuário">
+          <input id="ed-senha" placeholder="Senha (mín. 6)" maxlength="40" autocomplete="new-password" aria-label="Senha do editor">
+        </div>
+        <label class="ed-papel-l" id="ed-papel-l">Tipo de acesso
+          <select id="ed-papel" aria-label="Tipo de acesso"><option value="editor">Editor / mesário: torneios e súmulas</option><option value="gestor">Gestor: torneios + cria acessos de mesários</option></select></label>
+        <button type="submit" id="ed-criar">Criar acesso</button>
+      </form>
+    </div>
+  </div>
+
+  <footer>
+    <button type="button" class="linkish" id="btn-admin">Entrar como organizador</button>
+    <button type="button" class="linkish" id="btn-editor">Entrar como editor</button>
+    <button type="button" class="linkish" id="btn-editores" hidden>Editores</button>
+    <span id="ed-quem" hidden></span>
+    <button type="button" class="linkish" id="btn-senha" hidden>Trocar senha</button>
+    <button type="button" class="linkish" id="btn-logout" hidden>Sair</button>
+  </footer>
+  <div class="acesso" id="acesso" hidden>
+    <form id="form-editor" class="t-card" hidden>
+      <h3>Entrar como editor</h3>
+      <input id="lg-usuario" placeholder="Usuário" autocomplete="username" autocapitalize="none" aria-label="Usuário">
+      <input id="lg-senha" type="password" placeholder="Senha" autocomplete="current-password" aria-label="Senha">
+      <div class="t-linha"><button type="submit">Entrar</button><button type="button" class="ghost" id="lg-cancelar">Cancelar</button></div>
+    </form>
+    <form id="form-senha" class="t-card" hidden>
+      <h3>Trocar minha senha</h3>
+      <input id="nv-senha" type="password" placeholder="Nova senha (mín. 6)" autocomplete="new-password" aria-label="Nova senha">
+      <div class="t-linha"><button type="submit">Salvar senha</button><button type="button" class="ghost" id="nv-cancelar">Cancelar</button></div>
+    </form>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInAnonymously, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, collection, collectionGroup, doc, onSnapshot, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig, ADMIN_EMAILS } from "./config.js";
+import { montarTorneio } from "./torneio.js";
+import { montarAoVivo } from "./aovivo.js";
+import { DOMINIO, entrarEditor, trocarSenha, criarEditor, ouvirEditores, ouvirSouEditor, removerEditor, usuarioDe, mudarPapel, nomePapel } from "./acesso.js";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+let db;
+try { db = initializeFirestore(app, { localCache: persistentLocalCache() }); }
+catch (e) { db = initializeFirestore(app, {}); }
+
+const $ = id => document.getElementById(id);
+const DIAS = {0:"Domingo"};
+const HORA = d => "10:00";
+const MESES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const pad = n => String(n).padStart(2,"0");
+const iso = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y,m-1,d); };
+const br = s => { const d=parse(s); return pad(d.getDate())+"/"+pad(d.getMonth()+1)+"/"+d.getFullYear(); };
+const curto = s => { const d=parse(s); return pad(d.getDate())+"/"+pad(d.getMonth()+1); };
+const isTreino = d => d.getDay() in DIAS;
+const limpa = n => n.trim().replace(/\s+/g," ").split(" ").map(p => p ? p[0].toLocaleUpperCase("pt-BR")+p.slice(1) : p).join(" ");
+const key = n => n.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,60) || "x";
+const store = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }, del(k){ try{ localStorage.removeItem(k); }catch(e){} } };
+
+let user = null, isAdmin = false, isGestor = false, isEditor = false, pararEditor = null, pararLista = null, torneio = null;
+let todas = [];           // {dia, id, nome, em(ms), uid}
+let treinosCfg = {};      // dia -> {local}
+let amistosos = {};       // id -> {data, hora, local, adv, inicio(Timestamp), criado}
+let presAm = [];          // presenças dos amistosos: {dia:"am:id", id, nome, em, uid}
+let amEditando = null;    // null | "novo" | id
+let amCarregou = false;
+let cfg = { local: "" };
+let atual = null, rkDia = "geral", rkPeriodo = "tudo", carregou = false;
+let meuNome = store.get("aem-nome") || "";
+{ const q = new URLSearchParams(location.search).get("amistoso"); if (q && /^am-[a-z0-9]+$/.test(q)) atual = "am:"+q; } // link da lista do amistoso
+
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove("on"),3000); }
+
+/* ---------- jogos amistosos: listas com data, hora, local e adversário escolhidos pelo organizador ---------- */
+const SEMANA = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+const amDe = id => id && id.startsWith("am:") ? amistosos[id.slice(3)] || null : null;
+const ehAm = id => !!id && id.startsWith("am:");
+const diaSemana = id => SEMANA[parse(ehAm(id) ? (amDe(id)||{data:hoje()}).data : id).getDay()];
+const dataDe = id => ehAm(id) ? (amDe(id)||{data:hoje()}).data : id;
+const horaDe = id => ehAm(id) ? (amDe(id)||{}).hora || "--:--" : HORA(parse(id).getDay());
+const inicioDe = id => ehAm(id) ? new Date(dataDe(id)+"T"+horaDe(id)+":00-03:00") : inicio(id);
+const passouDe = id => ehAm(id) ? Date.now() >= inicioDe(id).getTime() : passou(id);
+const presRef = (id, k) => ehAm(id) ? doc(db,"aem_amistosos",id.slice(3),"aem_presencas",k) : doc(db,"aem_treinos",id,"aem_presencas",k);
+
+// Horas que a lista fica aberta antes do treino (abre quando o treino anterior começa)
+const ABRE = {0:168};
+// início do treino no horário de Brasília
+const inicio = dia => new Date(dia+"T"+HORA(parse(dia).getDay())+":00-03:00");
+const abertura = dia => new Date(inicio(dia).getTime() - ABRE[parse(dia).getDay()]*3600000);
+const aberto = dia => { const n=Date.now(); return n < inicio(dia).getTime() && n >= abertura(dia).getTime(); };
+const fmtQuando = dt => DIAS[dt.getDay()].toLowerCase()+", "+pad(dt.getDate())+"/"+pad(dt.getMonth()+1)+" às "+pad(dt.getHours())+":"+pad(dt.getMinutes());
+function proximoTreino(){
+  const d = new Date(); d.setHours(0,0,0,0);
+  for (let i=0;i<15;i++){ if (isTreino(d) && inicio(iso(d)).getTime() > Date.now()) return iso(d); d.setDate(d.getDate()+1); }
+  return iso(d);
+}
+const hoje = () => iso(new Date());
+const passou = dia => !aberto(dia);
+
+function lista(dia){ return (ehAm(dia) ? presAm : todas).filter(p=>p.dia===dia).sort((a,b)=>a.em-b.em); }
+function diasComLista(){ return [...new Set(todas.map(p=>p.dia))]; }
+
+function datasDisponiveis(){
+  const set = new Set(diasComLista());
+  const base = new Date(); base.setHours(0,0,0,0);
+  for (let i=-35;i<=21;i++){ const d=new Date(base); d.setDate(d.getDate()+i); if (isTreino(d)) set.add(iso(d)); }
+  return [...set].filter(id=>isTreino(parse(id))).sort().reverse();
+}
+
+/* ---------- TREINO ---------- */
+function renderSelect(){
+  const sel=$("sel-data"), datas=datasDisponiveis(), prox=proximoTreino();
+  if (!atual) atual = prox;
+  sel.textContent="";
+  datas.forEach(id=>{
+    const d=parse(id), n=lista(id).length, o=document.createElement("option");
+    o.value=id; o.textContent=DIAS[d.getDay()]+", "+br(id)+(id===prox?" · aberto":(inicio(id).getTime()<=Date.now()?" · fechado":""))+(n?" · "+n+(n===1?" nome":" nomes"):"");
+    sel.append(o);
+  });
+  // amistosos (mais recentes primeiro)
+  const ams = Object.entries(amistosos).sort((a,b)=>(b[1].data+b[1].hora).localeCompare(a[1].data+a[1].hora));
+  if (ams.length){
+    const g=document.createElement("optgroup"); g.label="Jogos amistosos";
+    ams.forEach(([id,a])=>{ const k="am:"+id, n=lista(k).length, o=document.createElement("option"); o.value=k;
+      o.textContent="🆚 "+(a.adv||"Amistoso")+" · "+curto(a.data)+" "+a.hora+(passouDe(k)?" · fechado":" · aberto")+(n?" · "+n+(n===1?" nome":" nomes"):"");
+      g.append(o); });
+    sel.append(g);
+  }
+  if (ehAm(atual) && amCarregou && !amDe(atual)) atual = prox;
+  sel.value=atual;
+}
+$("sel-data").onchange = e => { atual=e.target.value; amEditando=null; renderTreino(); };
+
+function localDe(dia){ if (ehAm(dia)) return (amDe(dia)||{}).local || ""; return (treinosCfg[dia] && treinosCfg[dia].local) || cfg.local || "AEM"; }
+
+function textoTreino(){
+  const rows=lista(atual), loc=localDe(atual), a=amDe(atual);
+  const L=["🏀 *BASQUETE AEM* 🦈", a ? "📋 *LISTA DE PRESENÇA – JOGO AMISTOSO*" : "📋 *LISTA DE PRESENÇA – TREINO*",""];
+  if (a) L.push("🆚 *Basquete AEM x "+(a.adv||"a definir")+"*","");
+  L.push("📅 "+diaSemana(atual)+", "+br(dataDe(atual)),"⏰ Horário: "+horaDe(atual));
+  if (loc) L.push("📍 Local: "+loc);
+  L.push("","✅ *Confirmados ("+rows.length+"):*");
+  rows.forEach((r,i)=>L.push((i+1)+". "+r.nome));
+  if (!rows.length) L.push("1. ");
+  L.push("","👉 Confirme a sua presença: "+location.origin+location.pathname+(ehAm(atual) ? "?amistoso="+atual.slice(3) : ""));
+  return L.join("\n");
+}
+const wa = t => "https://wa.me/?text="+encodeURIComponent(t);
+
+function minhaPresenca(){ return user ? lista(atual).find(p=>p.uid===user.uid && !isAdmin) || (isAdmin ? null : null) : null; }
+function minhaPresencaPorNome(){ return meuNome ? lista(atual).find(p=>key(p.nome)===key(meuNome)) : null; }
+
+function renderTreino(){
+  if (!atual) return;
+  const rows=lista(atual), loc=localDe(atual), AM=ehAm(atual), a=amDe(atual);
+  $("i-dia").textContent = diaSemana(atual)+" "+curto(dataDe(atual));
+  $("i-hora").textContent = horaDe(atual);
+  $("i-local-ro").textContent = loc || "—";
+  if (document.activeElement !== $("i-local")) $("i-local").value = loc;
+  $("i-local-ro").hidden = isAdmin && !AM; $("i-local").hidden = !isAdmin || AM;
+  // amistoso: adversário em destaque; organizador cria/edita
+  $("am-vs").hidden = !AM; if (AM) $("am-vs").textContent = "🆚 Jogo amistoso contra "+((a && a.adv) || "—");
+  $("am-bar").hidden = !isAdmin || !!amEditando; $("btn-edit-am").hidden = !AM;
+  $("am-form").hidden = !isAdmin || !amEditando;
+
+  const old = passouDe(atual);
+  const mine = (user && meuNome) ? rows.find(p=>p.uid===user.uid && key(p.nome)===key(meuNome)) : null;
+  const jaPorNome = minhaPresencaPorNome();
+  $("past-note").hidden = !old;
+  if (old){
+    const futuro = !AM && Date.now() < abertura(atual).getTime();
+    $("past-note").textContent = AM ? "🔒 Lista fechada: as confirmações encerraram às "+horaDe(atual)+", no horário do jogo."+(isAdmin?" Como organizador, você ainda pode corrigir.":"") : futuro
+      ? "🔒 A lista deste treino abre "+fmtQuando(abertura(atual))+"."
+      : "🔒 Lista fechada: as confirmações encerraram às "+HORA(parse(atual).getDay())+", no horário do treino."+(isAdmin?" Como organizador, você ainda pode corrigir.":"");
+  }
+  $("box-confirm").hidden = !carregou || old || !!mine || !!jaPorNome;
+  $("box-done").hidden = !(mine || jaPorNome) || old;
+  if (mine || jaPorNome){
+    const p = mine || jaPorNome; const pos = rows.indexOf(p)+1;
+    $("done-msg").textContent = p.nome+", você é o nº "+pos+" da lista ✅";
+    $("btn-sair").hidden = !mine && !isAdmin;
+  }
+  $("me-known").hidden = !meuNome;
+  $("me-name").textContent = meuNome;
+  $("nome").hidden = !!meuNome;
+  $("btn-confirm").textContent = meuNome ? "Confirmar presença" : "Confirmar";
+  $("admin-add").hidden = !isAdmin;
+  const t = textoTreino();
+  $("wa-link").href = wa(t); $("wa-link2").href = wa(t);
+
+  const ol=$("list"); ol.textContent="";
+  $("total").textContent = rows.length+(rows.length===1?" nome":" nomes");
+  if (!carregou){ const li=document.createElement("li"); li.className="empty"; li.textContent="Carregando a lista…"; ol.append(li); return; }
+  if (!rows.length){ const li=document.createElement("li"); li.className="empty"; li.textContent= old ? "Ninguém registrado neste treino." : "Ninguém confirmou ainda. Seja o primeiro!"; ol.append(li); return; }
+  rows.forEach((r,i)=>{
+    const li=document.createElement("li");
+    if (user && r.uid===user.uid) li.className="mine";
+    const n=document.createElement("span"); n.className="n"; n.textContent=i+1;
+    const dv=document.createElement("div");
+    const nm=document.createElement("span"); nm.className="nome"; nm.textContent=r.nome;
+    const h=document.createElement("span"); h.className="sub";
+    h.textContent = r.em ? new Date(r.em).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "enviando…";
+    dv.append(nm,h); li.append(n,dv);
+    if (isAdmin){
+      const b=document.createElement("button"); b.className="danger"; b.type="button"; b.textContent="Tirar";
+      b.setAttribute("aria-label","Tirar "+r.nome+" da lista");
+      b.onclick=()=>remover(r); li.append(b);
+    } else li.append(document.createElement("span"));
+    ol.append(li);
+  });
+}
+
+async function adicionar(nome, comoAdmin){
+  nome = limpa(nome);
+  if (nome.length < 2){ toast("Digite um nome."); return false; }
+  const conhecido = nomesConhecidos().find(x=>key(x)===key(nome)); if (conhecido) nome = conhecido;
+  if (lista(atual).some(p=>key(p.nome)===key(nome))){ toast(nome+" já está na lista."); return false; }
+  if (!user){ toast("Conectando… tente de novo em instantes."); return false; }
+  try{
+    await setDoc(presRef(atual, key(nome)), { nome, em: serverTimestamp(), uid: user.uid });
+    return nome;
+  }catch(e){
+    console.error(e);
+    toast(e && e.code==="permission-denied" ? (nome+" já está na lista.") : "Não deu para salvar. Verifique a internet.");
+    return false;
+  }
+}
+
+$("form-confirm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const nome = meuNome || $("nome").value;
+  $("btn-confirm").disabled = true;
+  const ok = await adicionar(nome, false);
+  $("btn-confirm").disabled = false;
+  if (ok){ meuNome = ok; store.set("aem-nome", ok); $("nome").value=""; toast("Presença confirmada! 🦈🏀"); renderTreino(); }
+});
+$("me-change").onclick = ()=>{ meuNome=""; store.del("aem-nome"); renderTreino(); $("nome").focus(); };
+$("admin-add").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const ok = await adicionar($("admin-nome").value, true);
+  if (ok){ $("admin-nome").value=""; $("admin-nome").focus(); toast(ok+" adicionado."); }
+});
+
+async function remover(p){
+  try{ await deleteDoc(presRef(p.dia, p.id)); toast(p.nome+" saiu da lista."); }
+  catch(e){ console.error(e); toast("Não deu para tirar o nome."); }
+}
+$("btn-sair").onclick = ()=>{
+  const p = lista(atual).find(x=>user && x.uid===user.uid) || (isAdmin && minhaPresencaPorNome());
+  if (p) remover(p);
+};
+
+let locTimer;
+$("i-local").addEventListener("input", ()=>{
+  clearTimeout(locTimer);
+  locTimer=setTimeout(async ()=>{
+    const local=$("i-local").value.trim();
+    try{
+      await setDoc(doc(db,"aem_treinos",atual), {local}, {merge:true});
+      if (local) await setDoc(doc(db,"aem_config","geral"), {local}, {merge:true});
+      toast("Local salvo.");
+    }catch(e){ toast("Não deu para salvar o local."); }
+  },800);
+});
+
+// criar / editar / apagar amistoso (organizador)
+function abrirAmForm(modo){
+  amEditando = modo; const a = modo==="novo" ? null : amDe(atual);
+  $("am-form-tit").textContent = a ? "Editar jogo amistoso" : "Novo jogo amistoso";
+  $("am-salvar").textContent = a ? "Salvar" : "Criar lista";
+  $("am-adv").value = a ? a.adv||"" : ""; $("am-data").value = a ? a.data : proximoTreino(); $("am-hora").value = a ? a.hora : "10:00";
+  $("am-local").value = a ? a.local||"" : (cfg.local || "AEM");
+  $("am-apagar").hidden = !a; renderTreino(); $("am-adv").focus();
+}
+$("btn-novo-am").onclick = ()=>abrirAmForm("novo");
+$("btn-edit-am").onclick = ()=>abrirAmForm(atual.slice(3));
+$("am-cancelar").onclick = ()=>{ amEditando=null; renderTreino(); };
+$("am-form").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const adv=$("am-adv").value.trim().replace(/\s+/g," "), data=$("am-data").value, hora=$("am-hora").value, local=$("am-local").value.trim();
+  if (!adv || !/^\d{4}-\d{2}-\d{2}$/.test(data) || !/^\d{2}:\d{2}$/.test(hora)){ toast("Preencha contra quem, data e horário."); return; }
+  const id = amEditando==="novo" ? "am-"+Date.now().toString(36) : amEditando;
+  const ini = new Date(data+"T"+hora+":00-03:00");
+  try{
+    const dados = { adv, data, hora, local, inicio: Timestamp.fromMillis(ini.getTime()), ...(amEditando==="novo" ? { criado: Date.now() } : {}) };
+    await setDoc(doc(db,"aem_amistosos",id), dados, { merge:true });
+    amistosos[id] = { ...(amistosos[id]||{}), ...dados };
+    toast(amEditando==="novo" ? "Lista do amistoso criada. Já pode mandar no grupo!" : "Amistoso atualizado.");
+    atual = "am:"+id; amEditando=null; renderAll();
+  }catch(err){ console.error(err); toast(err && err.code==="permission-denied" ? "Sem permissão: publique as regras novas do Firebase." : "Não deu para salvar o amistoso."); }
+});
+$("am-apagar").onclick = async ()=>{
+  const b=$("am-apagar"); if (!b.dataset.armado){ b.dataset.armado="1"; b.textContent="Toque de novo para apagar (some a lista)"; setTimeout(()=>{ delete b.dataset.armado; b.textContent="Apagar este amistoso"; },4000); return; }
+  const id=amEditando; try{
+    const batch=writeBatch(db); presAm.filter(p=>p.dia==="am:"+id).forEach(p=>batch.delete(presRef(p.dia,p.id))); batch.delete(doc(db,"aem_amistosos",id)); await batch.commit();
+    amEditando=null; atual=proximoTreino(); toast("Amistoso apagado."); renderAll();
+  }catch(err){ console.error(err); toast("Não deu para apagar."); }
+};
+
+async function copiar(t){
+  try{ await navigator.clipboard.writeText(t); toast("Copiado. É só colar no grupo."); }
+  catch(e){ const ta=document.createElement("textarea"); ta.value=t; ta.style.position="fixed"; ta.style.opacity="0"; document.body.append(ta); ta.select(); try{ document.execCommand("copy"); toast("Copiado. É só colar no grupo."); }catch(_){ toast("Não consegui copiar."); } ta.remove(); }
+}
+$("copy").onclick=()=>copiar(textoTreino());
+
+/* ---------- RANKING ---------- */
+function filtrados(){
+  return todas.filter(p=>{
+    const d=parse(p.dia).getDay();
+    if (rkDia!=="geral" && String(d)!==rkDia) return false;
+    return rkPeriodo==="tudo" || p.dia.startsWith(rkPeriodo);
+  });
+}
+function calcRanking(){
+  const rows=filtrados(), dias=new Set(rows.map(p=>p.dia)), pessoas={};
+  rows.forEach(p=>{
+    const k=key(p.nome), d=parse(p.dia).getDay();
+    const x = pessoas[k] || (pessoas[k]={nome:p.nome,total:0,d:{0:0,2:0,4:0}});
+    x.total++; x.d[d]++;
+  });
+  const arr=Object.values(pessoas).sort((a,b)=>b.total-a.total || a.nome.localeCompare(b.nome,"pt-BR"));
+  let pos=0,last=null; arr.forEach((p,i)=>{ if(p.total!==last){pos=i+1;last=p.total;} p.pos=pos; });
+  return {nT:dias.size, arr};
+}
+function renderPeriodos(){
+  const sel=$("sel-periodo"), dias=diasComLista();
+  const anos=[...new Set(dias.map(x=>x.slice(0,4)))].sort().reverse();
+  const meses=[...new Set(dias.map(x=>x.slice(0,7)))].sort().reverse();
+  const opts=[["tudo","Todo o período"],...anos.map(a=>[a,"Ano de "+a]),...meses.map(m=>[m,MESES[+m.slice(5)-1]+"/"+m.slice(0,4)])];
+  if (!opts.some(o=>o[0]===rkPeriodo)) rkPeriodo="tudo";
+  sel.textContent=""; opts.forEach(([v,t])=>{ const o=document.createElement("option"); o.value=v; o.textContent=t; sel.append(o); });
+  sel.value=rkPeriodo;
+}
+$("sel-periodo").onchange=e=>{ rkPeriodo=e.target.value; renderRanking(); };
+document.querySelectorAll("#chips-dia button").forEach(b=>b.onclick=()=>{
+  rkDia=b.dataset.dia;
+  document.querySelectorAll("#chips-dia button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+  renderRanking();
+});
+function renderRanking(){
+  const {nT,arr}=calcRanking(), tb=$("rk-table"); tb.textContent="";
+  const pl = nT===1 ? "treino" : "treinos"; const rot = rkDia==="geral" ? pl : pl+" de "+DIAS[rkDia].toLowerCase();
+  $("rk-stat").textContent = nT ? nT+" "+rot+" · "+arr.length+(arr.length===1?" atleta":" atletas") : "";
+  $("wa-rk").href = wa(textoRanking());
+  if (!arr.length){ const tr=document.createElement("tr"), td=document.createElement("td"); td.className="empty-cell"; td.textContent= carregou ? "Ainda não há presenças para este filtro." : "Carregando…"; tr.append(td); tb.append(tr); return; }
+  const geral=rkDia==="geral";
+  // colunas: [classe da <col>, título, classe da célula]
+  const cols=[["c-pos","#","pos"],["c-nome","Atleta","nome-col"]];
+  
+  cols.push(["c-tot","Total","tot"],["c-pct","%","pct"]);
+  const cg=document.createElement("colgroup");
+  cols.forEach(([c])=>{ const col=document.createElement("col"); col.className=c; cg.append(col); });
+  tb.append(cg);
+  const thead=document.createElement("thead"), hr=document.createElement("tr");
+  cols.forEach(([,t,cls])=>{ const th=document.createElement("th"); th.scope="col"; th.textContent=t; if(cls==="nome-col") th.className="nome-col"; hr.append(th); });
+  thead.append(hr); tb.append(thead);
+  const tbody=document.createElement("tbody"), max=arr[0].total;
+  arr.forEach(p=>{
+    const tr=document.createElement("tr"); if(p.pos<=3) tr.className="podio";
+    const vals=[p.pos,p.nome].concat([p.total,Math.round(p.total/nT*100)+"%"]);
+    vals.forEach((v,i)=>{
+      const td=document.createElement("td"); td.className=cols[i][2];
+      if (i===0){ const s=document.createElement("span"); s.textContent=v; td.append(s); }
+      else if (i===1){ const nm=document.createElement("span"); nm.className="nome"; nm.textContent=v; nm.title=v;
+        const bar=document.createElement("div"); bar.className="bar"; const b=document.createElement("i"); b.style.width=(p.total/max*100)+"%"; bar.append(b); td.append(nm,bar); }
+      else td.textContent=v;
+      tr.append(td);
+    });
+    tbody.append(tr);
+  });
+  tb.append(tbody);
+}
+function textoRanking(){
+  const {nT,arr}=calcRanking();
+  const tit = "DOMINGOS";
+  const per = $("sel-periodo").selectedOptions[0] ? $("sel-periodo").selectedOptions[0].textContent : "Todo o período";
+  const L=["🏀 *BASQUETE AEM* 🦈","🏆 *RANKING DE PRESENÇA – "+tit+"*","🗓️ "+per+" · "+nT+(nT===1?" treino":" treinos"),""];
+  const med={1:"🥇",2:"🥈",3:"🥉"};
+  arr.forEach(p=>L.push((med[p.pos]||p.pos+".")+" "+p.nome+" – "+p.total+(p.total===1?" presença":" presenças")));
+  if (!arr.length) L.push("Sem presenças registradas.");
+  return L.join("\n");
+}
+$("copy-rk").onclick=()=>copiar(textoRanking());
+
+/* ---------- HISTÓRICO ---------- */
+function renderHist(){
+  const dias=diasComLista().sort().reverse(), ol=$("h-list"); ol.textContent="";
+  $("h-stat").textContent = dias.length ? dias.length+(dias.length===1?" treino":" treinos")+" registrados · média de "+(todas.length/dias.length).toFixed(1).replace(".",",")+" atletas por treino" : "";
+  if (!dias.length){ const li=document.createElement("li"); li.className="empty"; li.textContent = carregou ? "Nenhum treino registrado ainda." : "Carregando…"; ol.append(li); return; }
+  dias.forEach(id=>{
+    const d=parse(id), rows=lista(id), li=document.createElement("li");
+    const n=document.createElement("span"); n.className="n"; n.textContent=rows.length;
+    const dv=document.createElement("div");
+    const nm=document.createElement("span"); nm.className="nome"; nm.textContent=DIAS[d.getDay()]+", "+br(id);
+    const s=document.createElement("span"); s.className="sub"; s.textContent=rows.map(r=>r.nome).join(", ");
+    dv.append(nm,s);
+    const b=document.createElement("button"); b.className="ghost"; b.type="button"; b.textContent="Abrir";
+    b.onclick=()=>{ atual=id; showTab("treino"); renderAll(); window.scrollTo(0,0); };
+    li.append(n,dv,b); ol.append(li);
+  });
+}
+
+/* ---------- MÉTRICAS ---------- */
+let metPeriodo = "tudo";
+const SVGNS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, text){ const e=document.createElementNS(SVGNS,tag); for (const k in attrs) e.setAttribute(k,attrs[k]); if (text!=null) e.textContent=text; return e; }
+function escala(v){ const st=[1,2,5,10,20,25,50,100,200]; const step=st.find(x=>Math.ceil(v/x)<=5)||Math.ceil(v/5); return {step, max:Math.max(step,Math.ceil(v/step)*step)}; }
+// barras verticais: itens {rot, v, dica, hi}
+function barras(box, itens, o={}){
+  box.textContent="";
+  if (!itens.length){ const p=document.createElement("p"); p.className="cap"; p.textContent="Ainda sem dados."; box.append(p); return; }
+  const n=itens.length, W=Math.max(320, n*(o.minW||22)), H=170, L=26, R=6, T=16, B=o.rotLong?40:22;
+  const esc=escala(Math.max(...itens.map(i=>i.v))||1), max=esc.max, pw=W-L-R, ph=H-T-B, slot=pw/n, bw=Math.max(4, Math.min(34, slot*0.62));
+  const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":o.aria||"gráfico"});
+  if (W>360) svg.style.minWidth=W+"px";
+  const ticks=[]; for (let t=0;t<=max+1e-9;t+=esc.step) ticks.push(t);
+  ticks.forEach(t=>{ const y=T+ph-(t/max)*ph; svg.append(el("line",{x1:L,x2:W-R,y1:y,y2:y,class:"grid"})); svg.append(el("text",{x:L-5,y:y+3,"text-anchor":"end",class:"ax"},o.fmt?o.fmt(t):String(Math.round(t*10)/10).replace(".",","))); });
+  const every = Math.ceil(n/(o.maxRot||14));
+  itens.forEach((it,i)=>{
+    const x=L+slot*i+(slot-bw)/2, h=(it.v/max)*ph, y=T+ph-h, r=Math.min(4,bw/2,h);
+    const g=el("g",{});
+    // barra com topo arredondado, base reta na linha zero
+    const d = h<=0 ? "" : `M${x},${T+ph} V${y+r} Q${x},${y} ${x+r},${y} H${x+bw-r} Q${x+bw},${y} ${x+bw},${y+r} V${T+ph} Z`;
+    if (d) g.append(el("path",{d,class:"bar"+(it.hi?" hi":"")}));
+    const hit=el("rect",{x:L+slot*i,y:T,width:slot,height:ph,fill:"transparent"}); hit.append(el("title",{},it.dica)); g.append(hit);
+    if (o.valores!==false && it.v>0 && (n<=16 || it.hi)) g.append(el("text",{x:x+bw/2,y:y-4,"text-anchor":"middle",class:"val"}, o.fmtVal?o.fmtVal(it.v):String(it.v).replace(".",",")));
+    if (i%every===0 || n<=14) g.append(el("text",{x:x+bw/2,y:H-B+13,"text-anchor":"middle",class:"ax"},it.rot));
+    if (o.rotLong && it.rot2) g.append(el("text",{x:x+bw/2,y:H-B+25,"text-anchor":"middle",class:"ax"},it.rot2));
+    svg.append(g);
+  });
+  box.append(svg);
+}
+function renderMetPeriodos(){
+  const sel=$("met-periodo"), dias=diasComLista();
+  const anos=[...new Set(dias.map(x=>x.slice(0,4)))].sort().reverse();
+  const meses=[...new Set(dias.map(x=>x.slice(0,7)))].sort().reverse();
+  const opts=[["tudo","Todo o período"],...anos.map(a=>[a,"Ano de "+a]),...meses.map(m=>[m,MESES[+m.slice(5)-1]+"/"+m.slice(0,4)])];
+  if (!opts.some(o=>o[0]===metPeriodo)) metPeriodo="tudo";
+  sel.textContent=""; opts.forEach(([v,t])=>{ const o=document.createElement("option"); o.value=v; o.textContent=t; sel.append(o); }); sel.value=metPeriodo;
+}
+$("met-periodo").onchange=e=>{ metPeriodo=e.target.value; renderMetricas(); };
+function renderMetricas(){
+  renderMetPeriodos();
+  const rows = todas.filter(p=>metPeriodo==="tudo" || p.dia.startsWith(metPeriodo));
+  const porDia={}; rows.forEach(p=>{ porDia[p.dia]=(porDia[p.dia]||0)+1; });
+  const dias=Object.keys(porDia).sort();
+  const nT=dias.length, tot=rows.length, media=nT? tot/nT : 0;
+  const maxV=nT?Math.max(...dias.map(d=>porDia[d])):0, minV=nT?Math.min(...dias.map(d=>porDia[d])):0;
+  const diaMax=dias.find(d=>porDia[d]===maxV), atletas=new Set(rows.map(p=>key(p.nome))).size;
+  // blocos de números
+  const tiles=$("met-tiles"); tiles.textContent="";
+  [["Treinos",nT,"com lista registrada"],["Presenças",tot,"somando todos os treinos"],["Média",media.toFixed(1).replace(".",","),"atletas por treino"],["Recorde",maxV, diaMax?DIAS[parse(diaMax).getDay()]+", "+curto(diaMax):"—"],["Atletas",atletas,"diferentes no período"],["Menor lista",minV, nT? DIAS[parse(dias.find(d=>porDia[d]===minV)).getDay()]+", "+curto(dias.find(d=>porDia[d]===minV)):"—"]]
+    .forEach(([a,b,c])=>{ const d=document.createElement("div"); d.className="tile"; const s1=document.createElement("span"); s1.textContent=a; const s2=document.createElement("b"); s2.textContent=b; const s3=document.createElement("small"); s3.textContent=c; d.append(s1,s2,s3); tiles.append(d); });
+  // top 5 atletas
+  const cont5={}; rows.forEach(p=>{ const k=key(p.nome); (cont5[k]||(cont5[k]={nome:p.nome,n:0})).n++; });
+  const top=Object.values(cont5).sort((a,b)=>b.n-a.n || a.nome.localeCompare(b.nome,"pt-BR")).slice(0,5);
+  const t5=$("ch-top5"); t5.textContent="";
+  $("cap-top5").textContent = nT ? "Presenças em "+nT+(nT===1?" treino":" treinos")+" do período" : "";
+  if (!top.length){ const p=document.createElement("p"); p.className="cap"; p.textContent="Ainda sem dados."; t5.append(p); }
+  let pos5=0, last5=null;
+  top.forEach((a,i)=>{
+    if (a.n!==last5){ pos5=i+1; last5=a.n; }
+    const row=document.createElement("div"); row.className="hb"+(pos5===1?" p1":""); row.title=a.nome+": "+a.n+(a.n===1?" presença":" presenças")+" ("+Math.round(a.n/nT*100)+"% dos treinos)";
+    const ps=document.createElement("span"); ps.className="pos"; ps.textContent=pos5+"º"; ps.style.gridRow="1/3";
+    const nm=document.createElement("span"); nm.className="nm"; nm.textContent=a.nome;
+    const tr=document.createElement("div"); tr.className="trk"; const bi=document.createElement("i"); bi.style.width=(a.n/top[0].n*100)+"%"; tr.append(bi);
+    const q=document.createElement("div"); q.className="q"; const qb=document.createElement("b"); qb.textContent=a.n; const qs=document.createElement("small"); qs.textContent=Math.round(a.n/nT*100)+"%"; q.append(qb,qs);
+    row.append(ps,nm,q,tr); t5.append(row);
+  });
+  // participação por treino
+  $("cap-treinos").textContent = nT ? "Atletas em cada treino · em laranja, o recorde" : "";
+  barras($("ch-treinos"), dias.map(d=>({rot:curto(d), rot2:DIAS[parse(d).getDay()].slice(0,3), v:porDia[d], hi:porDia[d]===maxV, dica:DIAS[parse(d).getDay()]+", "+br(d)+": "+porDia[d]+(porDia[d]===1?" atleta":" atletas")})), {rotLong:Object.keys(DIAS).length>1, aria:"Atletas por treino", minW:30});
+  // média por dia da semana
+  const ordem=[2,4,0].filter(w=>w in DIAS);
+  $("card-dias").hidden = ordem.length<2;
+  if (ordem.length>=2){
+    const med=ordem.map(w=>{ const ds=dias.filter(d=>parse(d).getDay()===w); const s=ds.reduce((a,d)=>a+porDia[d],0); return {w, n:ds.length, v: ds.length? s/ds.length : 0}; });
+    const mx=Math.max(...med.map(m=>m.v));
+    barras($("ch-dias"), med.map(m=>({rot:DIAS[m.w], v:Math.round(m.v*10)/10, hi:m.v===mx && mx>0, dica:DIAS[m.w]+": média de "+m.v.toFixed(1).replace(".",",")+" atletas em "+m.n+(m.n===1?" treino":" treinos")})), {aria:"Média por dia da semana"});
+  }
+  // horário do dia das confirmações
+  const horas=Array(24).fill(0); rows.forEach(p=>{ if (p.em) horas[new Date(p.em).getHours()]++; });
+  const pico=horas.indexOf(Math.max(...horas));
+  $("cap-horas").textContent = tot ? "Hora do dia em que os nomes entram · pico às "+pad(pico)+"h" : "";
+  barras($("ch-horas"), horas.map((v,h)=>({rot:pad(h)+"h", v, hi:v===horas[pico] && v>0, dica:pad(h)+":00 às "+pad(h)+":59 · "+v+(v===1?" confirmação":" confirmações")})), {aria:"Confirmações por hora do dia", maxRot:8, minW:14, valores:false});
+  // antecedência
+  const faixas=[["3d+",72,1e9],["2–3d",48,72],["1–2d",24,48],["12–24h",12,24],["6–12h",6,12],["3–6h",3,6],["1–3h",1,3],["< 1h",0,1]];
+  const cont=faixas.map(()=>0);
+  rows.forEach(p=>{ if (!p.em) return; const hrs=(inicio(p.dia).getTime()-p.em)/3600000; const i=faixas.findIndex(([,a,b])=>hrs>=a && hrs<b); if (i>=0) cont[i]++; });
+  const cmax=Math.max(...cont);
+  barras($("ch-antec"), faixas.map(([r],i)=>({rot:r, v:cont[i], hi:cont[i]===cmax && cmax>0, dica:r.replace("d"," dias").replace("3 dias+","3 dias ou mais")+" antes do treino: "+cont[i]+(cont[i]===1?" confirmação":" confirmações")})), {aria:"Antecedência das confirmações"});
+  // mais e menos cheios
+  const lst=(id,arr)=>{ const ol=$(id); ol.textContent=""; if(!arr.length){ const li=document.createElement("li"); li.textContent="Sem dados ainda."; ol.append(li); return; }
+    arr.forEach(d=>{ const li=document.createElement("li"); const a=document.createElement("span"); a.textContent=DIAS[parse(d).getDay()]+", "+br(d); const b=document.createElement("b"); b.textContent=porDia[d]; li.append(a,b); ol.append(li); }); };
+  const ordenado=[...dias].sort((a,b)=>porDia[b]-porDia[a] || b.localeCompare(a));
+  lst("top-mais", ordenado.slice(0,5));
+  lst("top-menos", [...dias].sort((a,b)=>porDia[a]-porDia[b] || b.localeCompare(a)).slice(0,5));
+}
+
+/* ---------- comum ---------- */
+function nomesConhecidos(){ const m={}; [...todas, ...presAm].sort((a,b)=>a.em-b.em).forEach(p=>m[key(p.nome)]=p.nome); return Object.values(m).sort((a,b)=>a.localeCompare(b,"pt-BR")); }
+function renderAll(){
+  renderSelect(); renderTreino(); renderPeriodos(); renderRanking(); renderHist(); if (!$("p-met").hidden) renderMetricas();
+  const dl=$("nomes-conhecidos"); dl.textContent=""; nomesConhecidos().forEach(n=>{ const o=document.createElement("option"); o.value=n; dl.append(o); });
+}
+function showTab(t){ if (t==="met") renderMetricas(); if (t==="aovivo") montarVivoTreino(); ["treino","ranking","hist","met","aovivo"].forEach(x=>{ $("p-"+x).hidden = x!==t; $("tab-"+x).setAttribute("aria-selected",String(x===t)); }); }
+$("tab-treino").onclick=()=>showTab("treino");
+$("tab-ranking").onclick=()=>showTab("ranking");
+$("tab-hist").onclick=()=>showTab("hist");
+$("tab-met").onclick=()=>showTab("met");
+$("tab-aovivo").onclick=()=>showTab("aovivo");
+// Ao vivo do treino/rachão/amistoso: mesmo canal do YouTube do Basquete; placar marcado à mão (+1/+2/+3, quartos e relógio)
+let vivoTreino = null;
+function montarVivoTreino(){
+  if (vivoTreino) return;
+  vivoTreino = montarAoVivo({ db, fs:{ collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc }, toast, esporte:"basquete", col:"aem_torneios",
+    app:"aem-treino", canal:{}, canalDe:"aem", instagram:"aem_mococa",
+    placarManual:true, rotuloManual:"Rachão", presentes:()=>lista(atual).map(p=>p.nome), rotulosManual:["Rachão","Amistoso","Treino"], podeEditar:()=>isAdmin||isEditor, torneio:()=>null, jogos:()=>[],
+    // amistosos cadastrados na aba Treino viram atalho (Basquete AEM x adversário)
+    sugestoes:()=>Object.values(amistosos).filter(a=>a.data>=hoje()).sort((x,y)=>(x.data+x.hora).localeCompare(y.data+y.hora)).concat(Object.values(amistosos).filter(a=>a.data<hoje()).sort((x,y)=>(y.data+y.hora).localeCompare(x.data+x.hora))).slice(0,4)
+      .map(a=>({ nomeA:"Basquete AEM", nomeB:a.adv||"Adversário", titulo:"Amistoso · Basquete AEM x "+(a.adv||""), quando:curto(a.data)+" "+a.hora })),
+    marca:{ titulo:"Basquete AEM", logo:"logo.png", escura:"#0b0b0d", cor:"#d7262c", destaque:"#3b8fe0" }, autor:()=>user ? (user.email||"") : null,
+    mudouVivo:()=>{ const v = vivoTreino && vivoTreino.estado() && vivoTreino.estado().aoVivo; $("tab-aovivo").textContent = v ? "● Ao vivo" : "Ao vivo"; $("tab-aovivo").classList.toggle("vivo", !!v); } });
+  $("p-aovivo").append(vivoTreino.tela());
+}
+setTimeout(montarVivoTreino, 1500);
+
+/* ---------- login ---------- */
+$("btn-admin").onclick = async ()=>{
+  const prov = new GoogleAuthProvider(); prov.setCustomParameters({prompt:"select_account"});
+  try{ await signInWithPopup(auth, prov); }
+  catch(e){
+    if (e && (e.code==="auth/popup-blocked" || e.code==="auth/operation-not-supported-in-this-environment")) await signInWithRedirect(auth, prov);
+    else if (e && e.code!=="auth/popup-closed-by-user" && e.code!=="auth/cancelled-popup-request") toast("Não deu para entrar. Tente de novo.");
+  }
+};
+$("btn-logout").onclick = async ()=>{ fecharAcesso(); await signOut(auth); };
+
+/* ---------- modos de uso ---------- */
+const MODO_KEY = "aem-modo";
+function mostrarModo(m){
+  try{ localStorage.setItem(MODO_KEY, m); }catch(e){}
+  $("modo-treino").hidden = m!=="treino"; $("modo-torneio").hidden = m!=="torneio";
+  document.body.classList.toggle("modo-torneio", m==="torneio");
+  $("modo-btn-treino").setAttribute("aria-pressed", String(m==="treino")); $("modo-btn-torneio").setAttribute("aria-pressed", String(m==="torneio"));
+  if (m==="torneio" && !torneio) torneio = montarTorneio({ db, fs:{ collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, writeBatch }, mesaBasquete:true, aoVivo:{ app:"aem", canal:{}, instagram:"aem_mococa" }, midias:{ app:"aem", perfis:[{ usuario:"aem_mococa", nome:"AEM Mococa" }, { usuario:"basquete_mococa", nome:"Basquete Mococa" }], hashtags:"#basquete #aem #basqueteaem #mococa" }, autor:()=>user ? (user.email||"") : null, esporte:"basquete", col:"aem_torneios", maxAtletas:10, toast, root:$("torneio-root"), podeEditar:()=>isAdmin||isEditor, marca:{ titulo:"Basquete AEM", logo:"logo.png", escura:"#0b0b0d", cor:"#d7262c", destaque:"#3b8fe0" } });
+  atualizarAcesso();
+}
+$("modo-btn-treino").onclick=()=>mostrarModo("treino");
+$("modo-btn-torneio").onclick=()=>mostrarModo("torneio");
+
+/* ---------- acessos ---------- */
+function fecharAcesso(){ $("acesso").hidden=true; $("form-editor").hidden=true; $("form-senha").hidden=true; }
+function atualizarAcesso(){
+  const editorLogado = isEditor && user && !user.isAnonymous;
+  $("admin-pill").hidden = !(isAdmin||isEditor); $("admin-pill").textContent = isAdmin ? "Organizador" : isGestor ? "Gestor" : "Editor";
+  $("btn-admin").hidden = isAdmin||editorLogado; $("btn-editor").hidden = isAdmin||editorLogado;
+  $("btn-logout").hidden = !(isAdmin||editorLogado); $("btn-logout").textContent = isAdmin ? "Sair do modo organizador" : "Sair";
+  $("btn-senha").hidden = !editorLogado;
+  $("ed-quem").hidden = !editorLogado; if (editorLogado) $("ed-quem").textContent = (isGestor ? "Gestor: " : "Editor: ") + usuarioDe(user.email);
+  const torneioAberto = !$("modo-torneio").hidden;
+  $("btn-editores").hidden = !((isAdmin||isGestor) && torneioAberto);
+  if ($("ed-papel-l")) $("ed-papel-l").hidden = !isAdmin;
+  if (!(isAdmin||isGestor)){ $("ed-painel").hidden = true; if (pararLista){ pararLista(); pararLista=null; } }
+  if (torneio) torneio.atualizarPermissao();
+}
+$("btn-editor").onclick=()=>{ $("acesso").hidden=false; $("form-senha").hidden=true; $("form-editor").hidden=false; $("lg-usuario").focus(); };
+$("lg-cancelar").onclick=fecharAcesso; $("nv-cancelar").onclick=fecharAcesso;
+$("form-editor").addEventListener("submit", async e=>{
+  e.preventDefault();
+  try{ await entrarEditor(auth, $("lg-usuario").value, $("lg-senha").value); $("lg-senha").value=""; fecharAcesso(); toast("Bem-vindo! Você pode editar o torneio."); }
+  catch(err){ console.error(err); toast("Usuário ou senha incorretos."); }
+});
+$("btn-senha").onclick=()=>{ $("acesso").hidden=false; $("form-editor").hidden=true; $("form-senha").hidden=false; $("nv-senha").focus(); };
+$("form-senha").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const n=$("nv-senha").value; if (n.length<6){ toast("A senha precisa ter pelo menos 6 caracteres."); return; }
+  try{ await trocarSenha(auth, n); $("nv-senha").value=""; fecharAcesso(); toast("Senha trocada."); }
+  catch(err){ console.error(err); toast(err && err.code==="auth/requires-recent-login" ? "Saia e entre de novo para trocar a senha." : "Não deu para trocar a senha."); }
+});
+$("btn-editores").onclick=()=>{
+  const p=$("ed-painel"); p.hidden=!p.hidden;
+  if (!p.hidden){ p.scrollIntoView({behavior:"smooth", block:"start"}); if (!pararLista) pararLista = ouvirEditores(db, lista=>{
+    const box=$("ed-lista"); box.textContent="";
+    if (!lista.length){ const x=document.createElement("p"); x.className="cap"; x.textContent="Nenhum editor ainda."; box.append(x); }
+    lista.forEach(ed=>{ const row=document.createElement("div"); row.className="ed-item";
+      const t=document.createElement("div"); const b=document.createElement("b"); b.textContent=ed.nome; const sm=document.createElement("small"); sm.textContent=" · usuário: "+ed.usuario+" · "+nomePapel(ed.papel); t.append(b,sm);
+      const rm=document.createElement("button"); rm.type="button"; rm.className="danger t-mini"; rm.textContent="Remover";
+      let armado=false; rm.onclick=async ()=>{ if(!armado){ armado=true; rm.textContent="Confirmar remoção"; setTimeout(()=>{ armado=false; rm.textContent="Remover"; },4000); return; }
+        try{ await removerEditor(db, ed.uid); toast("Acesso de "+ed.nome+" removido."); }catch(e){ toast("Não deu para remover."); } };
+      const podeMexer = isAdmin || ed.papel!=="gestor"; rm.hidden = !podeMexer;
+      const pr=document.createElement("button"); pr.type="button"; pr.className="ghost t-mini"; pr.hidden=!isAdmin; pr.textContent = ed.papel==="gestor" ? "Tornar editor" : "Tornar gestor";
+      pr.onclick=async ()=>{ try{ await mudarPapel(db, ed.uid, ed.papel==="gestor" ? "editor" : "gestor"); toast(ed.nome+" agora é "+(ed.papel==="gestor" ? "editor / mesário." : "gestor.")); }catch(e){ toast("Não deu para mudar o acesso."); } };
+      const bx=document.createElement("div"); bx.className="ed-acoes"; bx.append(pr,rm);
+      row.append(t,bx); box.append(row); });
+  }); }
+};
+$("ed-form").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const nome=$("ed-nome").value.trim(), usuario=$("ed-usuario").value, senha=$("ed-senha").value;
+  $("ed-criar").disabled=true;
+  try{
+    const u = await criarEditor(firebaseConfig, db, { usuario, nome, senha, papel: isAdmin ? $("ed-papel").value : "editor" });
+    const texto = (isAdmin && $("ed-papel").value==="gestor" ? "Acesso de gestor – " : "Acesso de editor/mesário – ")+"Basquete AEM\nApp: "+location.origin+location.pathname+"\nNo app: Torneio → Entrar como editor\nUsuário: "+u+"\nSenha: "+senha+"\n(Troque a senha no primeiro acesso em \"Trocar senha\".)";
+    try{ await navigator.clipboard.writeText(texto); toast("Acesso criado. Dados copiados para enviar."); }catch(_){ toast("Editor criado: usuário "+u+"."); }
+    $("ed-nome").value=""; $("ed-usuario").value=""; $("ed-senha").value="";
+  }catch(err){
+    console.error(err);
+    const c = (err && (err.code||err.message)) || "";
+    toast(c.includes("email-already-in-use") ? "Esse usuário já existe." : c.includes("usuario-curto") ? "Usuário precisa de pelo menos 3 letras." : c.includes("senha-curta")||c.includes("weak-password") ? "Senha precisa ter pelo menos 6 caracteres." : "Não deu para criar o editor.");
+  }
+  $("ed-criar").disabled=false;
+});
+getRedirectResult(auth).catch(()=>{});
+
+onAuthStateChanged(auth, async u=>{
+  if (pararEditor){ pararEditor(); pararEditor=null; }
+  if (!u){ user=null; isAdmin=false; isEditor=false; isGestor=false; atualizarAcesso(); try{ await signInAnonymously(auth); }catch(e){ console.error(e); toast("Sem conexão com o servidor."); } return; }
+  user=u; isEditor=false; isGestor=false;
+  isAdmin = !u.isAnonymous && ADMIN_EMAILS.includes((u.email||"").toLowerCase());
+  if (!u.isAnonymous && !isAdmin){
+    if ((u.email||"").endsWith(DOMINIO)){
+      pararEditor = ouvirSouEditor(db, u.uid, async (ok, papel)=>{
+        if (!ok){ toast("Seu acesso de editor foi removido."); await signOut(auth); return; }
+        isEditor = true; isGestor = papel==="gestor"; atualizarAcesso(); renderAll();
+      });
+    } else { toast("Essa conta não é de organizador."); await signOut(auth); return; }
+  }
+  atualizarAcesso();
+  renderAll();
+});
+
+/* ---------- dados em tempo real ---------- */
+const timer = setTimeout(()=>{ if(!carregou) toast("A lista está demorando. Verifique a internet."); },10000);
+onSnapshot(collectionGroup(db,"aem_presencas"), snap=>{
+  carregou = true; clearTimeout(timer);
+  const tudo = snap.docs.map(s=>{ const x=s.data(); const em = x.em instanceof Timestamp ? x.em.toMillis() : (x.em ? Number(x.em) : Date.now()); const am = s.ref.parent.parent.parent && s.ref.parent.parent.parent.id === "aem_amistosos"; return {dia:(am?"am:":"")+s.ref.parent.parent.id, id:s.id, nome:x.nome, em, uid:x.uid, am}; }).filter(p=>p.nome);
+  todas = tudo.filter(p=>!p.am); presAm = tudo.filter(p=>p.am);
+  renderAll();
+}, e=>{ console.error(e); toast("Não foi possível carregar a lista."); });
+onSnapshot(collection(db,"aem_treinos"), snap=>{ const m={}; snap.docs.forEach(s=>m[s.id]=s.data()); treinosCfg=m; renderTreino(); }, ()=>{});
+onSnapshot(collection(db,"aem_amistosos"), snap=>{ const m={}; snap.docs.forEach(s=>m[s.id]=s.data()); amistosos=m; amCarregou=true; renderSelect(); renderTreino(); }, ()=>{});
+onSnapshot(doc(db,"aem_config","geral"), s=>{ cfg = s.exists() ? {local:"",...s.data()} : {local:""}; renderTreino(); }, ()=>{});
+
+/* ---------- instalar ---------- */
+const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+let deferred=null;
+if (!standalone){
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (ios){ $("install").hidden=false; $("install-text").textContent="No iPhone: toque em Compartilhar (quadrado com seta) e depois em \"Adicionar à Tela de Início\"."; }
+  else if (/android/i.test(navigator.userAgent)){ $("install").hidden=false; $("install-text").textContent="No Android: toque em ⋮ no Chrome e depois em \"Adicionar à tela inicial\" ou \"Instalar app\"."; }
+}
+window.addEventListener("beforeinstallprompt", e=>{ e.preventDefault(); deferred=e; $("install").hidden=false; $("btn-install").hidden=false; $("install-text").textContent="Tenha o Basquete AEM na tela inicial, como um app."; });
+$("btn-install").onclick = async ()=>{ if(!deferred) return; deferred.prompt(); await deferred.userChoice; deferred=null; $("install").hidden=true; };
+// atualização automática: procura versão nova ao abrir/voltar ao app e recarrega quando ela assume
+if ("serviceWorker" in navigator) {
+  const tinhaVersao = !!navigator.serviceWorker.controller; let recarregou = false;
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(reg => {
+    const checar = () => reg.update().catch(()=>{});
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checar(); });
+    setInterval(checar, 30 * 60 * 1000);
+  }).catch(()=>{});
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (!tinhaVersao || recarregou) return; recarregou = true; location.reload(); });
+}
+
+// importação de nomes antigos (só funciona para o organizador)
+window.__importar = async (dia, itens) => {
+  if (!isAdmin) return "entre como organizador";
+  for (const [nome, ms] of itens) await setDoc(doc(db,"aem_treinos",dia,"aem_presencas",key(nome)), { nome, em: Timestamp.fromMillis(ms), uid: user.uid });
+  return "ok " + itens.length;
+};
+setInterval(()=>{ const p=proximoTreino(); if (p!==renderSelect.ultimo){ if (atual===renderSelect.ultimo || !atual) atual=p; renderSelect.ultimo=p; renderAll(); } else renderTreino(); }, 30000);
+renderSelect.ultimo = proximoTreino();
+renderAll();
+let modoIni="treino"; try{ modoIni = localStorage.getItem(MODO_KEY)||"treino"; }catch(e){}
+mostrarModo(modoIni==="torneio" && !new URLSearchParams(location.search).get("amistoso") ? "torneio" : "treino");
+</script>
+</body>
+</html>
