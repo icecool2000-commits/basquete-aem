@@ -109,6 +109,13 @@ button:disabled{opacity:.5;cursor:default}
 .am-bar{display:flex;gap:8px;flex-wrap:wrap}.am-bar button{flex:1 1 160px}
 .am-form label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);flex:1 1 140px;min-width:0}
 .am-linha{display:flex;gap:8px;flex-wrap:wrap}.am-linha > *{flex:1 1 140px}
+.ag-dias{display:flex;flex-direction:column;gap:6px}
+.ag-dia{display:grid;grid-template-columns:minmax(96px,auto) 124px minmax(0,1fr);gap:8px;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:12px}
+.ag-dia.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.am-form .ag-dia label{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:8px;font-weight:600;color:var(--fg);font-size:14px;flex:none;min-width:0}
+.ag-dia input[type=time],.ag-dia input[type=text]{min-width:0;width:100%}.ag-dia input[type=checkbox]{width:20px;height:20px;margin:0;flex:none;accent-color:var(--accent)}
+.ag-dia:not(.on) input[type=time],.ag-dia:not(.on) input[type=text]{opacity:.35}
+@media (max-width:420px){.ag-dia{grid-template-columns:minmax(0,1fr) 124px}.ag-dia input[type=text]{grid-column:1/-1}}
 .am-vs{margin:0;padding:10px 12px;border-radius:12px;background:var(--surface);border:2px solid #ec6a2c;font-weight:700;text-align:center}
 .me{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .me b{font-size:18px}
@@ -209,7 +216,7 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
       <svg class="bola" id="bola" viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id="bg-bola" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#ffcf6b"/><stop offset=".45" stop-color="#f39a1e"/><stop offset="1" stop-color="#b9580a"/></radialGradient></defs><circle cx="50" cy="50" r="47" fill="url(#bg-bola)" stroke="#5a2a05" stroke-width="3"/><path d="M50 3 V97 M3 50 H97 M17 17 C38 35 38 65 17 83 M83 17 C62 35 62 65 83 83" fill="none" stroke="#4a2306" stroke-width="3.5"/></svg>
       <div class="estouro" id="estouro" aria-hidden="true"></div>
     </div></div><span class="admin-pill" id="admin-pill" hidden>Organizador</span></div>
-    <h1>Presença <span>domingo · 10:00 · AEM</span></h1>
+    <h1>Presença <span id="h-agenda">domingo · 10:00 · AEM</span></h1>
   </header>
 
   <div class="modos" role="group" aria-label="Modo de uso">
@@ -234,6 +241,17 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
       <button type="button" class="ghost" id="btn-novo-am">+ Lista de jogo amistoso</button>
       <button type="button" class="ghost" id="btn-edit-am" hidden>Editar amistoso</button>
     </div>
+    <div class="am-bar" id="ag-bar" hidden><button type="button" class="ghost" id="btn-agenda">⚙ Dias e horários dos treinos</button></div>
+    <form class="confirm-box am-form" id="ag-form" hidden>
+      <b>Dias e horários dos treinos</b>
+      <p class="sub" style="margin:0">Marque os dias da semana que têm treino, o horário e o local. A lista de cada treino abre quando o treino anterior começa e fecha no horário do treino.</p>
+      <div id="ag-dias" class="ag-dias"></div>
+      <div class="am-linha">
+        <button type="submit" id="ag-salvar">Salvar dias e horários</button>
+        <button type="button" class="ghost" id="ag-cancelar">Cancelar</button>
+      </div>
+      <p class="sub" id="ag-quem" style="margin:0"></p>
+    </form>
     <form class="confirm-box am-form" id="am-form" hidden>
       <b id="am-form-tit">Novo jogo amistoso</b>
       <label>Contra quem<input id="am-adv" maxlength="60" placeholder="Ex.: Basquete São José do Rio Pardo" required></label>
@@ -301,12 +319,7 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
 
   <!-- RANKING -->
   <section id="p-ranking" hidden>
-    <div class="chips" id="chips-dia" hidden>
-      <button type="button" data-dia="geral" aria-pressed="true">Geral</button>
-      <button type="button" data-dia="2" aria-pressed="false">Terça</button>
-      <button type="button" data-dia="4" aria-pressed="false">Quinta</button>
-      <button type="button" data-dia="0" aria-pressed="false">Domingo</button>
-    </div>
+    <div class="chips" id="chips-dia" hidden><button type="button" data-dia="geral" aria-pressed="true">Geral</button></div>
     <select id="sel-periodo" aria-label="Período do ranking"></select>
     <p class="stat" id="rk-stat"></p>
     <div class="tablebox"><table id="rk-table"></table></div>
@@ -487,8 +500,13 @@ try { db = initializeFirestore(app, { localCache: persistentLocalCache() }); }
 catch (e) { db = initializeFirestore(app, {}); }
 
 const $ = id => document.getElementById(id);
-const DIAS = {0:"Domingo"};
-const HORA = d => "10:00";
+// Dias e horários dos treinos: editáveis pelo organizador e pelos editores (aem_config/agenda).
+// agenda = {mins:{"0":600}, abre:{"0":10080}, locais:{"0":"AEM"}} – chave = dia da semana (0 = domingo), mins = minutos do dia (Brasília), abre = minutos que a lista fica aberta antes do treino
+const AG_PADRAO = {mins:{"0":600}, abre:{"0":10080}, locais:{"0":"AEM"}};
+let agenda = AG_PADRAO;
+let DIAS = {0:"Domingo"};
+const hhmm = m => pad(Math.floor(m/60))+":"+pad(m%60);
+const HORA = d => agenda.mins[String(d)]!=null ? hhmm(agenda.mins[String(d)]) : "10:00";
 const MESES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 const pad = n => String(n).padStart(2,"0");
 const iso = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
@@ -506,6 +524,7 @@ let treinosCfg = {};      // dia -> {local}
 let amistosos = {};       // id -> {data, hora, local, adv, inicio(Timestamp), criado}
 let presAm = [];          // presenças dos amistosos: {dia:"am:id", id, nome, em, uid}
 let amEditando = null;    // null | "novo" | id
+let agEditando = false;   // editando dias e horários dos treinos
 let amCarregou = false;
 let cfg = { local: "" };
 let atual = null, rkDia = "geral", rkPeriodo = "tudo", carregou = false;
@@ -526,12 +545,29 @@ const passouDe = id => ehAm(id) ? Date.now() >= inicioDe(id).getTime() : passou(
 const presRef = (id, k) => ehAm(id) ? doc(db,"aem_amistosos",id.slice(3),"aem_presencas",k) : doc(db,"aem_treinos",id,"aem_presencas",k);
 
 // Horas que a lista fica aberta antes do treino (abre quando o treino anterior começa)
-const ABRE = {0:168};
+const ABRE = {0:168}; // horas (recalculado da agenda)
+function aplicarAgenda(a){
+  agenda = (a && a.mins && Object.keys(a.mins).length) ? {mins:a.mins, abre:a.abre||{}, locais:a.locais||{}, atualizado:a.atualizado, por:a.por} : AG_PADRAO;
+  DIAS = {}; Object.keys(ABRE).forEach(k=>delete ABRE[k]);
+  Object.keys(agenda.mins).map(Number).sort((x,y)=>x-y).forEach(w=>{ DIAS[w]=SEMANA[w]; ABRE[w]=(agenda.abre[String(w)]||10080)/60; });
+  const ab = w => ["dom","seg","ter","qua","qui","sex","sáb"][w];
+  const ordem = Object.keys(DIAS).map(Number).sort((x,y)=>((x+6)%7)-((y+6)%7));
+  const locs = [...new Set(ordem.map(w=>agenda.locais[String(w)]||cfg.local||"AEM"))];
+  $("h-agenda").textContent = ordem.length===1
+    ? SEMANA[ordem[0]].toLowerCase()+" · "+HORA(ordem[0])+" · "+locs[0]
+    : ordem.map(w=>ab(w)+" "+HORA(w)).join(" · ")+(locs.length===1?" · "+locs[0]:"");
+  // chips do ranking por dia
+  const ch=$("chips-dia"); [...ch.querySelectorAll("button:not([data-dia=geral])")].forEach(b=>b.remove());
+  ordem.forEach(w=>{ const b=document.createElement("button"); b.type="button"; b.dataset.dia=String(w); b.textContent=SEMANA[w]; b.setAttribute("aria-pressed",String(rkDia===String(w))); ch.append(b); });
+  if (rkDia!=="geral" && !(rkDia in DIAS)) rkDia="geral";
+  ch.querySelector("[data-dia=geral]").setAttribute("aria-pressed",String(rkDia==="geral"));
+  ch.hidden = ordem.length<2;
+}
 // início do treino no horário de Brasília
 const inicio = dia => new Date(dia+"T"+HORA(parse(dia).getDay())+":00-03:00");
 const abertura = dia => new Date(inicio(dia).getTime() - ABRE[parse(dia).getDay()]*3600000);
 const aberto = dia => { const n=Date.now(); return n < inicio(dia).getTime() && n >= abertura(dia).getTime(); };
-const fmtQuando = dt => DIAS[dt.getDay()].toLowerCase()+", "+pad(dt.getDate())+"/"+pad(dt.getMonth()+1)+" às "+pad(dt.getHours())+":"+pad(dt.getMinutes());
+const fmtQuando = dt => SEMANA[dt.getDay()].toLowerCase()+", "+pad(dt.getDate())+"/"+pad(dt.getMonth()+1)+" às "+pad(dt.getHours())+":"+pad(dt.getMinutes());
 function proximoTreino(){
   const d = new Date(); d.setHours(0,0,0,0);
   for (let i=0;i<15;i++){ if (isTreino(d) && inicio(iso(d)).getTime() > Date.now()) return iso(d); d.setDate(d.getDate()+1); }
@@ -547,7 +583,7 @@ function datasDisponiveis(){
   const set = new Set(diasComLista());
   const base = new Date(); base.setHours(0,0,0,0);
   for (let i=-35;i<=21;i++){ const d=new Date(base); d.setDate(d.getDate()+i); if (isTreino(d)) set.add(iso(d)); }
-  return [...set].filter(id=>isTreino(parse(id))).sort().reverse();
+  return [...set].sort().reverse();
 }
 
 /* ---------- TREINO ---------- */
@@ -557,7 +593,7 @@ function renderSelect(){
   sel.textContent="";
   datas.forEach(id=>{
     const d=parse(id), n=lista(id).length, o=document.createElement("option");
-    o.value=id; o.textContent=DIAS[d.getDay()]+", "+br(id)+(id===prox?" · aberto":(inicio(id).getTime()<=Date.now()?" · fechado":""))+(n?" · "+n+(n===1?" nome":" nomes"):"");
+    o.value=id; o.textContent=SEMANA[d.getDay()]+", "+br(id)+(id===prox?" · aberto":(inicio(id).getTime()<=Date.now()?" · fechado":""))+(n?" · "+n+(n===1?" nome":" nomes"):"");
     sel.append(o);
   });
   // amistosos (mais recentes primeiro)
@@ -574,7 +610,7 @@ function renderSelect(){
 }
 $("sel-data").onchange = e => { atual=e.target.value; amEditando=null; renderTreino(); };
 
-function localDe(dia){ if (ehAm(dia)) return (amDe(dia)||{}).local || ""; return (treinosCfg[dia] && treinosCfg[dia].local) || cfg.local || "AEM"; }
+function localDe(dia){ if (ehAm(dia)) return (amDe(dia)||{}).local || ""; return (treinosCfg[dia] && treinosCfg[dia].local) || agenda.locais[String(parse(dia).getDay())] || cfg.local || "AEM"; }
 
 function textoTreino(){
   const rows=lista(atual), loc=localDe(atual), a=amDe(atual);
@@ -605,6 +641,8 @@ function renderTreino(){
   $("am-vs").hidden = !AM; if (AM) $("am-vs").textContent = "🆚 Jogo amistoso contra "+((a && a.adv) || "—");
   $("am-bar").hidden = !isAdmin || !!amEditando; $("btn-edit-am").hidden = !AM;
   $("am-form").hidden = !isAdmin || !amEditando;
+  const podeAg = isAdmin || isEditor;
+  $("ag-bar").hidden = !podeAg || agEditando; $("ag-form").hidden = !podeAg || !agEditando;
 
   const old = passouDe(atual);
   const mine = (user && meuNome) ? rows.find(p=>p.uid===user.uid && key(p.nome)===key(meuNome)) : null;
@@ -706,6 +744,45 @@ $("i-local").addEventListener("input", ()=>{
   },800);
 });
 
+// dias e horários dos treinos (organizador e editores)
+function montarAgForm(){
+  const box=$("ag-dias"); box.textContent="";
+  [1,2,3,4,5,6,0].forEach(w=>{
+    const k=String(w), on=agenda.mins[k]!=null;
+    const row=document.createElement("div"); row.className="ag-dia"+(on?" on":""); row.dataset.w=k;
+    const lb=document.createElement("label"); const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=on; lb.append(cb, document.createTextNode(SEMANA[w]));
+    const hr=document.createElement("input"); hr.type="time"; hr.value=on?HORA(w):"19:00"; hr.setAttribute("aria-label","Horário de "+SEMANA[w]);
+    const lc=document.createElement("input"); lc.type="text"; lc.maxLength=80; lc.placeholder="Local"; lc.value=agenda.locais[k]||cfg.local||"AEM"; lc.setAttribute("aria-label","Local de "+SEMANA[w]);
+    cb.onchange=()=>row.classList.toggle("on",cb.checked);
+    [hr,lc].forEach(x=>x.addEventListener("focus",()=>{ if(!cb.checked){ cb.checked=true; row.classList.add("on"); } }));
+    row.append(lb,hr,lc); box.append(row);
+  });
+  $("ag-quem").textContent = agenda.atualizado ? "Última alteração: "+(agenda.por||"—")+" em "+new Date(agenda.atualizado.toMillis ? agenda.atualizado.toMillis() : agenda.atualizado).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}) : "";
+}
+$("btn-agenda").onclick=()=>{ agEditando=true; montarAgForm(); renderTreino(); $("ag-form").scrollIntoView({behavior:"smooth",block:"nearest"}); };
+$("ag-cancelar").onclick=()=>{ agEditando=false; renderTreino(); };
+$("ag-form").addEventListener("submit", async ev=>{
+  ev.preventDefault();
+  const mins={}, locais={};
+  $("ag-dias").querySelectorAll(".ag-dia").forEach(r=>{
+    const [cb,hr,lc]=r.querySelectorAll("input"); if (!cb.checked) return;
+    const [h,m]=(hr.value||"").split(":").map(Number); if (isNaN(h)||isNaN(m)) return;
+    mins[r.dataset.w]=h*60+m; const l=lc.value.trim(); if (l) locais[r.dataset.w]=l.slice(0,80);
+  });
+  const ks=Object.keys(mins);
+  if (!ks.length){ toast("Marque pelo menos um dia de treino."); return; }
+  // a lista de cada treino abre quando o treino anterior (na semana) começa
+  const pos=ks.map(k=>({k, t:Number(k)*1440+mins[k]})).sort((a,b)=>a.t-b.t), abre={};
+  pos.forEach((x,i)=>{ const ant=pos[(i-1+pos.length)%pos.length]; let g=x.t-ant.t; if (g<=0) g+=10080; abre[x.k]=g; });
+  const por = isAdmin ? "Organizador" : (user && user.email ? usuarioDe(user.email) : "Editor");
+  $("ag-salvar").disabled=true;
+  try{
+    await setDoc(doc(db,"aem_config","agenda"), {mins, abre, locais, atualizado:serverTimestamp(), por});
+    agEditando=false; toast("Dias e horários salvos ✅"); renderTreino();
+  }catch(e){ console.error(e); toast("Não deu para salvar. Confira se você entrou como organizador ou editor."); }
+  $("ag-salvar").disabled=false;
+});
+
 // criar / editar / apagar amistoso (organizador)
 function abrirAmForm(modo){
   amEditando = modo; const a = modo==="novo" ? null : amDe(atual);
@@ -775,14 +852,15 @@ function renderPeriodos(){
   sel.value=rkPeriodo;
 }
 $("sel-periodo").onchange=e=>{ rkPeriodo=e.target.value; renderRanking(); };
-document.querySelectorAll("#chips-dia button").forEach(b=>b.onclick=()=>{
+$("chips-dia").addEventListener("click", ev=>{
+  const b=ev.target.closest("button"); if (!b) return;
   rkDia=b.dataset.dia;
   document.querySelectorAll("#chips-dia button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
   renderRanking();
 });
 function renderRanking(){
   const {nT,arr}=calcRanking(), tb=$("rk-table"); tb.textContent="";
-  const pl = nT===1 ? "treino" : "treinos"; const rot = rkDia==="geral" ? pl : pl+" de "+DIAS[rkDia].toLowerCase();
+  const pl = nT===1 ? "treino" : "treinos"; const rot = rkDia==="geral" ? pl : pl+" de "+SEMANA[rkDia].toLowerCase();
   $("rk-stat").textContent = nT ? nT+" "+rot+" · "+arr.length+(arr.length===1?" atleta":" atletas") : "";
   $("wa-rk").href = wa(textoRanking());
   if (!arr.length){ const tr=document.createElement("tr"), td=document.createElement("td"); td.className="empty-cell"; td.textContent= carregou ? "Ainda não há presenças para este filtro." : "Carregando…"; tr.append(td); tb.append(tr); return; }
@@ -834,7 +912,7 @@ function renderHist(){
     const d=parse(id), rows=lista(id), li=document.createElement("li");
     const n=document.createElement("span"); n.className="n"; n.textContent=rows.length;
     const dv=document.createElement("div");
-    const nm=document.createElement("span"); nm.className="nome"; nm.textContent=DIAS[d.getDay()]+", "+br(id);
+    const nm=document.createElement("span"); nm.className="nome"; nm.textContent=SEMANA[d.getDay()]+", "+br(id);
     const s=document.createElement("span"); s.className="sub"; s.textContent=rows.map(r=>r.nome).join(", ");
     dv.append(nm,s);
     const b=document.createElement("button"); b.className="ghost"; b.type="button"; b.textContent="Abrir";
@@ -892,7 +970,7 @@ function renderMetricas(){
   const diaMax=dias.find(d=>porDia[d]===maxV), atletas=new Set(rows.map(p=>key(p.nome))).size;
   // blocos de números
   const tiles=$("met-tiles"); tiles.textContent="";
-  [["Treinos",nT,"com lista registrada"],["Presenças",tot,"somando todos os treinos"],["Média",media.toFixed(1).replace(".",","),"atletas por treino"],["Recorde",maxV, diaMax?DIAS[parse(diaMax).getDay()]+", "+curto(diaMax):"—"],["Atletas",atletas,"diferentes no período"],["Menor lista",minV, nT? DIAS[parse(dias.find(d=>porDia[d]===minV)).getDay()]+", "+curto(dias.find(d=>porDia[d]===minV)):"—"]]
+  [["Treinos",nT,"com lista registrada"],["Presenças",tot,"somando todos os treinos"],["Média",media.toFixed(1).replace(".",","),"atletas por treino"],["Recorde",maxV, diaMax?SEMANA[parse(diaMax).getDay()]+", "+curto(diaMax):"—"],["Atletas",atletas,"diferentes no período"],["Menor lista",minV, nT? SEMANA[parse(dias.find(d=>porDia[d]===minV)).getDay()]+", "+curto(dias.find(d=>porDia[d]===minV)):"—"]]
     .forEach(([a,b,c])=>{ const d=document.createElement("div"); d.className="tile"; const s1=document.createElement("span"); s1.textContent=a; const s2=document.createElement("b"); s2.textContent=b; const s3=document.createElement("small"); s3.textContent=c; d.append(s1,s2,s3); tiles.append(d); });
   // top 5 atletas
   const cont5={}; rows.forEach(p=>{ const k=key(p.nome); (cont5[k]||(cont5[k]={nome:p.nome,n:0})).n++; });
@@ -912,14 +990,14 @@ function renderMetricas(){
   });
   // participação por treino
   $("cap-treinos").textContent = nT ? "Atletas em cada treino · em laranja, o recorde" : "";
-  barras($("ch-treinos"), dias.map(d=>({rot:curto(d), rot2:DIAS[parse(d).getDay()].slice(0,3), v:porDia[d], hi:porDia[d]===maxV, dica:DIAS[parse(d).getDay()]+", "+br(d)+": "+porDia[d]+(porDia[d]===1?" atleta":" atletas")})), {rotLong:Object.keys(DIAS).length>1, aria:"Atletas por treino", minW:30});
+  barras($("ch-treinos"), dias.map(d=>({rot:curto(d), rot2:SEMANA[parse(d).getDay()].slice(0,3), v:porDia[d], hi:porDia[d]===maxV, dica:SEMANA[parse(d).getDay()]+", "+br(d)+": "+porDia[d]+(porDia[d]===1?" atleta":" atletas")})), {rotLong:Object.keys(DIAS).length>1, aria:"Atletas por treino", minW:30});
   // média por dia da semana
-  const ordem=[2,4,0].filter(w=>w in DIAS);
+  const ordem=[1,2,3,4,5,6,0].filter(w=>w in DIAS);
   $("card-dias").hidden = ordem.length<2;
   if (ordem.length>=2){
     const med=ordem.map(w=>{ const ds=dias.filter(d=>parse(d).getDay()===w); const s=ds.reduce((a,d)=>a+porDia[d],0); return {w, n:ds.length, v: ds.length? s/ds.length : 0}; });
     const mx=Math.max(...med.map(m=>m.v));
-    barras($("ch-dias"), med.map(m=>({rot:DIAS[m.w], v:Math.round(m.v*10)/10, hi:m.v===mx && mx>0, dica:DIAS[m.w]+": média de "+m.v.toFixed(1).replace(".",",")+" atletas em "+m.n+(m.n===1?" treino":" treinos")})), {aria:"Média por dia da semana"});
+    barras($("ch-dias"), med.map(m=>({rot:SEMANA[m.w], v:Math.round(m.v*10)/10, hi:m.v===mx && mx>0, dica:SEMANA[m.w]+": média de "+m.v.toFixed(1).replace(".",",")+" atletas em "+m.n+(m.n===1?" treino":" treinos")})), {aria:"Média por dia da semana"});
   }
   // horário do dia das confirmações
   const horas=Array(24).fill(0); rows.forEach(p=>{ if (p.em) horas[new Date(p.em).getHours()]++; });
@@ -934,7 +1012,7 @@ function renderMetricas(){
   barras($("ch-antec"), faixas.map(([r],i)=>({rot:r, v:cont[i], hi:cont[i]===cmax && cmax>0, dica:r.replace("d"," dias").replace("3 dias+","3 dias ou mais")+" antes do treino: "+cont[i]+(cont[i]===1?" confirmação":" confirmações")})), {aria:"Antecedência das confirmações"});
   // mais e menos cheios
   const lst=(id,arr)=>{ const ol=$(id); ol.textContent=""; if(!arr.length){ const li=document.createElement("li"); li.textContent="Sem dados ainda."; ol.append(li); return; }
-    arr.forEach(d=>{ const li=document.createElement("li"); const a=document.createElement("span"); a.textContent=DIAS[parse(d).getDay()]+", "+br(d); const b=document.createElement("b"); b.textContent=porDia[d]; li.append(a,b); ol.append(li); }); };
+    arr.forEach(d=>{ const li=document.createElement("li"); const a=document.createElement("span"); a.textContent=SEMANA[parse(d).getDay()]+", "+br(d); const b=document.createElement("b"); b.textContent=porDia[d]; li.append(a,b); ol.append(li); }); };
   const ordenado=[...dias].sort((a,b)=>porDia[b]-porDia[a] || b.localeCompare(a));
   lst("top-mais", ordenado.slice(0,5));
   lst("top-menos", [...dias].sort((a,b)=>porDia[a]-porDia[b] || b.localeCompare(a)).slice(0,5));
@@ -1083,7 +1161,12 @@ onSnapshot(collectionGroup(db,"aem_presencas"), snap=>{
 }, e=>{ console.error(e); toast("Não foi possível carregar a lista."); });
 onSnapshot(collection(db,"aem_treinos"), snap=>{ const m={}; snap.docs.forEach(s=>m[s.id]=s.data()); treinosCfg=m; renderTreino(); }, ()=>{});
 onSnapshot(collection(db,"aem_amistosos"), snap=>{ const m={}; snap.docs.forEach(s=>m[s.id]=s.data()); amistosos=m; amCarregou=true; renderSelect(); renderTreino(); }, ()=>{});
-onSnapshot(doc(db,"aem_config","geral"), s=>{ cfg = s.exists() ? {local:"",...s.data()} : {local:""}; renderTreino(); }, ()=>{});
+onSnapshot(doc(db,"aem_config","geral"), s=>{ cfg = s.exists() ? {local:"",...s.data()} : {local:""}; aplicarAgenda(agenda===AG_PADRAO?null:agenda); renderTreino(); }, ()=>{});
+onSnapshot(doc(db,"aem_config","agenda"), s=>{
+  const antes=proximoTreino(); aplicarAgenda(s.exists()?s.data():null);
+  if (!atual || atual===antes) atual=proximoTreino();
+  renderSelect.ultimo=proximoTreino(); renderAll();
+}, ()=>{});
 
 /* ---------- instalar ---------- */
 const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;

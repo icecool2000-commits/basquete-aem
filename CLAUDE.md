@@ -6,7 +6,7 @@
 - localStorage: `aem-nome`, `aem-modo`. Cache do service worker: `aem-vN`.
 - Instagram: @aem_mococa (Ao vivo/Instagram) e @basquete_mococa (perfis da aba Mídias). Canal do YouTube: ainda não cadastrado (`canal:{}`; quando houver, pôr id/handle no aoVivo do torneio e no montarVivoTreino).
 - Placar da live: `placar.html?app=aem` (torneio) e `?app=aem-treino` (treino/rachão/amistoso), marca "Basquete AEM" no MARCA do placar.html (compartilhado).
-- Treinos: mesmo horário do Basquete Mococa (domingo 10:00, AEM) — a trava de horário usa `basqueteAberto` nas regras; mudou o horário, mudar no app (HORA/ABRE) e nas regras.
+- Dias e horários dos treinos EDITÁVEIS pelo organizador e pelos editores/gestores (botão "⚙ Dias e horários dos treinos" na aba Treino): doc `aem_config/agenda` = {mins:{"<dia 0-6>": minutos do dia em Brasília}, abre:{dia: minutos que a lista fica aberta = desde o início do treino anterior na semana}, locais:{dia: local}, atualizado, por}. Sem o doc vale o padrão (domingo 10:00, AEM). App: `aplicarAgenda` recalcula DIAS/HORA/ABRE, o subtítulo do topo (`#h-agenda`) e os chips do ranking por dia; datas antigas com lista continuam no seletor mesmo se o dia sair da agenda. Regras: `aemTreinoAberto(dia)` lê a agenda (`aemAberto`; sem agenda usa `basqueteAberto`); escrita da agenda com `podeTorneio()`. Mudou a agenda → nada a mudar nas regras.
 
 ## Itens herdados do app do Basquete Mococa
 - Não usar mensagens automáticas no WhatsApp (não há API gratuita para grupos); o app usa link wa.me para compartilhar.
