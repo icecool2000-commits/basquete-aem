@@ -200,9 +200,94 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
 @media (prefers-reduced-motion:no-preference){ol.list li{animation:in .25s ease-out}}
 @keyframes in{from{background:color-mix(in srgb,var(--accent) 30%,transparent)}to{background:transparent}}
 .ed-acoes{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.ed-papel-l{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+/* abertura em tela cheia (tubarão: entra na quadra, dribla, enterra, quebra a tabela, comemora; escudo + "AEM Basquete" + slogan).
+   Uma linha do tempo em Web Animations (só opacity/transform/clip-path), dissolves sem queda de brilho e câmera contínua. */
+#abertura{position:fixed;inset:0;z-index:9999;background:#050506;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;overflow:hidden;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+#abertura::before{content:"";position:absolute;inset:-20%;background:radial-gradient(60% 45% at 50% 42%,rgb(215 38 44 / .32),transparent 70%);pointer-events:none}
+.ab-palco{position:relative;width:min(94vw,540px,calc(66vh * 380 / 336));aspect-ratio:380/336;overflow:hidden;border-radius:18px;transform:translateZ(0);box-shadow:0 0 0 1px rgb(255 255 255 / .08),0 18px 50px rgb(0 0 0 / .6)}
+.ab-palco .cam{position:absolute;inset:0;will-change:transform}
+.ab-palco img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;will-change:opacity,transform,clip-path;backface-visibility:hidden}
+.ab-palco .clarao{position:absolute;inset:0;pointer-events:none;opacity:0;will-change:opacity,transform;mix-blend-mode:screen;background:radial-gradient(circle at 70% 35%,#fff,rgb(255 210 200 / .6) 28%,transparent 65%)}
+.ab-palco .reflexo{position:absolute;inset:0;pointer-events:none;opacity:0;mix-blend-mode:screen;will-change:transform,opacity;
+  background:linear-gradient(105deg,transparent 35%,rgb(255 255 255 / .75) 48%,transparent 60%);transform:translateX(-120%)}
+.ab-slogan{position:relative;display:flex;flex-wrap:wrap;justify-content:center;gap:4px 12px;margin:0;max-width:min(94vw,540px);text-align:center;
+  font-family:var(--display);font-weight:400;font-size:clamp(15px,4.6vw,21px);letter-spacing:.02em;text-transform:uppercase;color:#fff;text-wrap:balance}
+.ab-slogan span{opacity:0;will-change:opacity,transform}
+.ab-slogan span b{color:#e8333a;font-weight:400}
+.ab-pular{position:relative;background:transparent;color:#bbb;border:1px solid #444;border-radius:999px;padding:6px 16px;font-size:13px;min-height:0}
 </style>
 </head>
 <body>
+<div id="abertura" role="img" aria-label="Abertura do app Basquete AEM: o tubarão enterra e quebra a tabela. Nossa paixão. Nossa quadra. Nossa história.">
+  <div class="ab-palco" id="ab-palco"></div>
+  <p class="ab-slogan" id="ab-slogan" aria-hidden="true"><span>Nossa <b>paixão</b>.</span><span>Nossa <b>quadra</b>.</span><span>Nossa <b>história</b>.</span></p>
+  <button type="button" class="ab-pular" id="ab-pular">Pular abertura</button>
+</div>
+<script>
+/* Abertura do Basquete AEM (12 quadros do vídeo enviado) – uma vez por sessão; tocar ou "Pular" encerra. */
+(function(){
+  const ov=document.getElementById("abertura"); let fim=false, anims=[];
+  let ja=false; try{ ja=sessionStorage.getItem("aem-abertura")==="1"; sessionStorage.setItem("aem-abertura","1"); }catch(e){}
+  if (ja || matchMedia("(prefers-reduced-motion: reduce)").matches || !ov.animate) { ov.remove(); window.__semAbertura=true; return; }
+  function sair(){
+    if(fim) return; fim=true; ov.style.pointerEvents="none"; window.dispatchEvent(new Event("abertura-fim"));
+    ov.animate([{opacity:1,transform:"none"},{opacity:0,transform:"scale(1.03)"}],{duration:600,easing:"cubic-bezier(.4,0,.2,1)",fill:"forwards"}).onfinish=()=>{ anims.forEach(x=>x.cancel()); ov.remove(); };
+  }
+  const palco=document.getElementById("ab-palco");
+  const cam=document.createElement("div"); cam.className="cam"; palco.append(cam);
+  const clarao=document.createElement("div"); clarao.className="clarao"; palco.append(clarao);
+  const reflexo=document.createElement("div"); reflexo.className="reflexo"; palco.append(reflexo);
+  // início (s) e dissolve de entrada de cada quadro: 0 escudo na quadra · 1-4 tubarão entra driblando · 5-6 salto · 7 ENTERRADA (tabela quebra)
+  // 8 caindo · 9 aterrissa · 10 comemora · 11 escudo + "AEM Basquete" (entra com corte diagonal)
+  const ini=[0, .78, 1.2, 1.58, 1.95, 2.32, 2.66, 2.98, 3.3, 3.68, 4.08, 4.62], cf=[.45, .3, .28, .28, .28, .22, .2, .06, .2, .16, .3, .55];
+  const FIM=7.6, D=FIM*1000, suave="cubic-bezier(.45,0,.25,1)", o=t=>Math.min(1,Math.max(0,t/FIM)), U=ini.length-1;
+  const imgs=ini.map((_,i)=>{ const im=new Image(); im.src="anim/abre-"+i+".webp"; im.alt=""; im.decoding="async"; cam.append(im); return im; });
+  ov.addEventListener("click", sair);
+  const pronto=Promise.all(imgs.map(im=>im.decode?im.decode().catch(()=>{}):Promise.resolve()));
+  const limite=setTimeout(sair, 3500); // internet lenta: não segura o app
+  pronto.then(()=>{
+    if (fim) return; clearTimeout(limite);
+    imgs.forEach((im,i)=>{
+      const a=ini[i], c=cf[i], prox=i<U ? ini[i+1]+cf[i+1] : FIM;
+      if (i<U){
+        const k=[{offset:0,opacity:0}]; if (a>0) k.push({offset:o(a),opacity:0,easing:suave});
+        k.push({offset:o(a+c),opacity:1},{offset:o(prox),opacity:1},{offset:Math.min(1,o(prox)+.001),opacity:0},{offset:1,opacity:0});
+        anims.push(im.animate(k,{duration:D,fill:"both"}));
+      } else {
+        // nome AEM Basquete: entra com um corte diagonal vermelho/preto da direita para a esquerda
+        anims.push(im.animate([{offset:0,opacity:1,clipPath:"polygon(100% 0,100% 0,100% 100%,100% 100%)"},{offset:o(a),opacity:1,clipPath:"polygon(100% 0,100% 0,100% 100%,100% 100%)",easing:"cubic-bezier(.7,0,.2,1)"},
+          {offset:o(a+c),opacity:1,clipPath:"polygon(-30% 0,100% 0,100% 100%,0% 100%)"},{offset:1,opacity:1,clipPath:"polygon(-30% 0,100% 0,100% 100%,0% 100%)"}],{duration:D,fill:"both"}));
+      }
+      const ate=i<U ? prox : FIM;
+      anims.push(im.animate([{offset:0,transform:"scale(1.025)"},{offset:o(a),transform:"scale(1.025)",easing:"cubic-bezier(.2,.6,.3,1)"},{offset:o(ate),transform:"scale(1)"},{offset:1,transform:"scale(1)"}],{duration:D,fill:"both"}));
+    });
+    // câmera: avanço contínuo; soco + tremor amortecido na enterrada; tranco leve na aterrissagem; assenta no final
+    const t=ini[7], q=ini[9];
+    anims.push(cam.animate([
+      {offset:0,transform:"scale(1.06)",easing:"cubic-bezier(.25,.1,.25,1)"},
+      {offset:o(t-.05),transform:"scale(1.0) translateY(0)",easing:"cubic-bezier(.2,.9,.3,1)"},
+      {offset:o(t+.05),transform:"scale(1.05) translate(-1.3%,.9%) rotate(-.6deg)"},
+      {offset:o(t+.12),transform:"scale(1.035) translate(1.1%,-.7%) rotate(.5deg)"},
+      {offset:o(t+.2),transform:"scale(1.022) translate(-.7%,.4%) rotate(-.3deg)"},
+      {offset:o(t+.3),transform:"scale(1.012) translate(.3%,-.2%) rotate(.1deg)",easing:"ease-in-out"},
+      {offset:o(q),transform:"scale(1.008) translateY(0)",easing:"cubic-bezier(.3,1.6,.5,1)"},
+      {offset:o(q+.08),transform:"scale(1.02) translateY(.8%)"},
+      {offset:o(q+.24),transform:"scale(1.008) translateY(0)",easing:"ease-in-out"},
+      {offset:o(ini[U]),transform:"scale(1.0)",easing:"cubic-bezier(.3,0,.2,1)"},
+      {offset:1,transform:"scale(1.03)"}
+    ],{duration:D,fill:"both"}));
+    anims.push(clarao.animate([{offset:0,opacity:0},{offset:o(t-.02),opacity:0,transform:"scale(.85)"},{offset:o(t+.05),opacity:1,transform:"scale(.95)"},{offset:o(t+.6),opacity:0,transform:"scale(1.3)"},{offset:1,opacity:0}],{duration:D,fill:"both"}));
+    // brilho passando pelo nome depois que ele entra
+    const r=ini[U]+cf[U]+.15;
+    anims.push(reflexo.animate([{offset:0,opacity:0,transform:"translateX(-120%)"},{offset:o(r),opacity:0,transform:"translateX(-120%)",easing:"cubic-bezier(.45,0,.25,1)"},{offset:o(r+.05),opacity:1},{offset:o(r+.85),opacity:1,transform:"translateX(120%)"},{offset:o(r+.86),opacity:0},{offset:1,opacity:0,transform:"translateX(120%)"}],{duration:D,fill:"both"}));
+    // slogan, uma frase de cada vez
+    [...document.querySelectorAll("#ab-slogan span")].forEach((sp,i)=>{ const s0=ini[U]+.55+i*.38;
+      anims.push(sp.animate([{offset:0,opacity:0,transform:"translateY(10px)"},{offset:o(s0),opacity:0,transform:"translateY(10px)",easing:"cubic-bezier(.2,.8,.2,1)"},{offset:o(s0+.5),opacity:1,transform:"none"},{offset:1,opacity:1,transform:"none"}],{duration:D,fill:"both"})); });
+    anims[0].onfinish=sair;
+  });
+})();
+</script>
 <div class="wrap">
   <header>
     <div class="top"><div class="palco"><div class="cena" id="cena" title="Toque para ver a enterrada de novo">
@@ -404,8 +489,9 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
   const cena=$("cena"); if(!cena||!cena.animate) return;
   const parado=matchMedia("(prefers-reduced-motion: reduce)").matches;
   const escudo=$("escudo");
-  if(!parado){ setTimeout(()=>{ escudo.classList.add("brilha"); cena.classList.add("brilhando"); },900);
-    setTimeout(()=>{ escudo.classList.remove("brilha"); cena.classList.remove("brilhando"); },11000); }
+  const depois=fn=>{ if (window.__semAbertura || !document.getElementById("abertura")) fn(); else window.addEventListener("abertura-fim", ()=>setTimeout(fn,350), {once:true}); };
+  if(!parado) depois(()=>{ setTimeout(()=>{ escudo.classList.add("brilha"); cena.classList.add("brilhando"); },300);
+    setTimeout(()=>{ escudo.classList.remove("brilha"); cena.classList.remove("brilhando"); },10400); });
   if(parado) return;
   const tub=$("tubarao"), bola=$("bola"), vidro=$("vidro"), cesta=$("cesta"), estouro=$("estouro"), sombra=$("sombra");
   const T=5200, u=v=>v+"cqw";
@@ -479,8 +565,7 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
     // a tabela "volta" depois que tudo assentou
     setTimeout(()=>{ vidro.classList.remove("quebrado"); cesta.animate([{transform:"translateY(.9cqw) rotate(-3deg)"},{transform:"none"}],{duration:600,fill:"forwards"}); },T+1200);
   }
-  setTimeout(enterrada,1400);
-  setInterval(enterrada,18000);
+  depois(()=>{ setTimeout(enterrada,1400); setInterval(enterrada,18000); });
   cena.addEventListener("click",enterrada);
 })();
 </script>
